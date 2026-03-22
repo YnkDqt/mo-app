@@ -734,7 +734,7 @@ function Dashboard({ entries, cycles, settings }) {
 }
 
 // ─── SUIVI DU CYCLE ACTUEL ───────────────────────────────────────────────────
-function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum }) {
+function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum, isMobile }) {
   const [editEntry, setEditEntry] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [confirmId, setConfirmId] = useState(null);
@@ -776,24 +776,30 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
           action={<Btn onClick={openNew}>＋ Première entrée</Btn>} />
       ) : (
         <>
-          {/* Graphique température + glaire fertile */}
-          <Card style={{ marginBottom: 20 }}>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>Courbe de température</div>
-            <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 16 }}>
-              Points verts = glaire fertile observée
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={tempData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-c)" />
-                <XAxis dataKey="jour" tick={{ fontSize: 11 }} />
-                <YAxis domain={["dataMin - 0.1", "dataMax + 0.1"]} tick={{ fontSize: 11 }} />
-                <Tooltip contentStyle={{ background: "var(--surface)", border: `1px solid var(--border-c)`, borderRadius: 10, fontSize: 12 }}
-                  formatter={(v, n) => n === "temp" ? [`${v}°C`, "Température"] : [`${v}°C`, "Fertile"]} />
-                <Line type="monotone" dataKey="temp" stroke={C.primary} strokeWidth={2} dot={{ r: 3, fill: C.primary }} connectNulls={false} />
-                <Line type="monotone" dataKey="fertile" stroke={C.sage} strokeWidth={0} dot={{ r: 6, fill: C.sage }} connectNulls={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
+          {/* Graphique sticky */}
+          <div style={{
+            position: "sticky", top: isMobile ? 56 : 0, zIndex: 50,
+            background: "var(--bg)", paddingBottom: 12, paddingTop: 4,
+            marginBottom: 8,
+          }}>
+            <Card style={{ boxShadow: "0 4px 20px rgba(0,0,0,.07)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                <div style={{ fontWeight: 600 }}>Courbe de température</div>
+                <div style={{ fontSize: 12, color: "var(--muted-c)" }}>Points verts = glaire fertile</div>
+              </div>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={tempData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-c)" />
+                  <XAxis dataKey="jour" tick={{ fontSize: 11 }} />
+                  <YAxis domain={["dataMin - 0.1", "dataMax + 0.1"]} tick={{ fontSize: 11 }} />
+                  <Tooltip contentStyle={{ background: "var(--surface)", border: `1px solid var(--border-c)`, borderRadius: 10, fontSize: 12 }}
+                    formatter={(v, n) => n === "temp" ? [`${v}°C`, "Température"] : [`${v}°C`, "Fertile"]} />
+                  <Line type="monotone" dataKey="temp" stroke={C.primary} strokeWidth={2} dot={{ r: 3, fill: C.primary }} connectNulls={false} />
+                  <Line type="monotone" dataKey="fertile" stroke={C.sage} strokeWidth={0} dot={{ r: 6, fill: C.sage }} connectNulls={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </Card>
+          </div>
 
           {/* Tableau */}
           <Card noPad>
@@ -1144,17 +1150,46 @@ const NAVS = [
   { id: "params",    label: "Paramètres",       icon: "⚙" },
 ];
 
+// ─── PERSISTANCE ─────────────────────────────────────────────────────────────
+const STORAGE_KEY = "mo_data_v1";
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+function saveToStorage(entries, cycles, settings) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ entries, cycles, settings, savedAt: new Date().toISOString() }));
+  } catch (e) {
+    console.warn("localStorage indisponible:", e);
+  }
+}
+
 // ─── APP ROOT ────────────────────────────────────────────────────────────────
 export default function App() {
   const [view, setView] = useState("dashboard");
-  const [entries, setEntries] = useState([]);
-  const [cycles, setCycles] = useState([]);
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [hasUnsaved, setHasUnsaved] = useState(false);
-  const [dataModalOpen, setDataModalOpen] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [dataModalOpen, setDataModalOpen] = useState(false);
+  const [hasUnsaved, setHasUnsaved] = useState(false);
+
+  // Init state depuis localStorage si dispo, sinon vide
+  const stored = useMemo(() => loadFromStorage(), []);
+  const [entries, setEntries] = useState(stored?.entries || []);
+  const [cycles, setCycles] = useState(stored?.cycles || []);
+  const [settings, setSettings] = useState({ ...DEFAULT_SETTINGS, ...(stored?.settings || {}) });
+  const [showOnboarding, setShowOnboarding] = useState(!stored || stored.entries?.length === 0);
+
+  // Sauvegarde auto dans localStorage à chaque changement de données
+  useEffect(() => {
+    if (entries.length === 0 && cycles.length === 0) return;
+    saveToStorage(entries, cycles, settings);
+    setHasUnsaved(true);
+  }, [entries, cycles, settings]);
 
   useEffect(() => {
     const handle = () => setIsMobile(window.innerWidth <= 768);
@@ -1165,10 +1200,6 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", settings.darkMode);
   }, [settings.darkMode]);
-
-  useEffect(() => {
-    if (entries.length > 0 || cycles.length > 0) setHasUnsaved(true);
-  }, [entries, cycles, settings]);
 
   const currentCycleNum = useMemo(() =>
     Math.max(1, ...entries.map(e => e.cycleNum || 1)),
@@ -1217,9 +1248,13 @@ export default function App() {
   }, [currentCycleNum]);
 
   const handleLoad = useCallback((data) => {
-    if (data.entries) setEntries(data.entries);
-    if (data.cycles) setCycles(data.cycles);
-    if (data.settings) setSettings(s => ({ ...s, ...data.settings }));
+    const newEntries = data.entries || [];
+    const newCycles = data.cycles || [];
+    const newSettings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
+    setEntries(newEntries);
+    setCycles(newCycles);
+    setSettings(newSettings);
+    saveToStorage(newEntries, newCycles, newSettings);
     setHasUnsaved(false);
     setShowOnboarding(false);
   }, []);
@@ -1358,7 +1393,7 @@ export default function App() {
         {isMobile && <Drawer />}
         <main style={{ flex: 1, padding: isMobile ? "76px 18px 40px" : "44px 52px", maxWidth: isMobile ? undefined : 1100 }}>
           {view === "dashboard"  && <Dashboard entries={entries} cycles={cycles} settings={settings} />}
-          {view === "cycle"      && <CycleActuel entries={entries} cycles={cycles} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} currentCycleNum={currentCycleNum} />}
+          {view === "cycle"      && <CycleActuel entries={entries} cycles={cycles} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} currentCycleNum={currentCycleNum} isMobile={isMobile} />}
           {view === "historique" && <Historique entries={entries} cycles={cycles} />}
           {view === "params"     && <Parametres settings={settings} onUpdate={setSettings} onNewCycle={handleNewCycle} currentCycleNum={currentCycleNum} />}
         </main>
