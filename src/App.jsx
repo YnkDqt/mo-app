@@ -144,6 +144,14 @@ const G = `
   @media (max-width: 768px) {
     .form-grid { grid-template-columns: 1fr; }
     .tbl-wrap { -webkit-overflow-scrolling: touch; }
+    .grid-2col { grid-template-columns: 1fr !important; }
+    .kpi-grid  { grid-template-columns: 1fr 1fr !important; }
+    .page-padding { padding: 76px 16px 40px !important; }
+    .page-title h1 { font-size: 24px !important; }
+    .hide-mobile { display: none !important; }
+    .cycle-row-mobile { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px !important; }
+    .cycle-row-mobile .row-main { display: flex; align-items: center; gap: 10px; }
+    .cycle-row-mobile .row-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
   }
 `;
 
@@ -622,7 +630,7 @@ function Dashboard({ entries, cycles, settings }) {
         Tableau de bord
       </PageTitle>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14, marginBottom: 28 }}>
+      <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 14, marginBottom: 28 }}>
         <KPI label="Jour du cycle" value={todayCycleDay || "?"} icon="📅"
           sub={currentPhase?.label} color={currentPhase?.color || C.primary} />
         <KPI label="Ovulation estimée"
@@ -661,7 +669,7 @@ function Dashboard({ entries, cycles, settings }) {
         </Card>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 22 }}>
+      <div className="grid-2col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 22 }}>
         {/* Température du cycle actuel */}
         <Card>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>Température — cycle en cours</div>
@@ -738,6 +746,7 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
   const [editEntry, setEditEntry] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [confirmId, setConfirmId] = useState(null);
+  const [dupeDialog, setDupeDialog] = useState(null); // { existing, incoming }
 
   const cycleEntries = useMemo(() =>
     entries.filter(e => e.cycleNum === currentCycleNum).sort((a, b) => a.date.localeCompare(b.date)),
@@ -757,8 +766,23 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
   const openEdit = (e) => { setEditEntry(e); setModalOpen(true); };
 
   const handleSave = (entry) => {
-    if (editEntry) onEdit(entry);
-    else onAdd(entry);
+    if (editEntry) {
+      onEdit(entry);
+      return;
+    }
+    // Nouvelle entrée : vérifier si la date existe déjà dans ce cycle
+    const existing = cycleEntries.find(e => e.date === entry.date);
+    const hasData = existing && Object.entries(existing).some(([k, v]) =>
+      !["id","date","cycleNum","jourDuCycle"].includes(k) && v !== null && v !== "" && v !== undefined
+    );
+    if (existing && hasData) {
+      setDupeDialog({ existing, incoming: entry });
+    } else if (existing) {
+      // Entrée existante vide → on remplace silencieusement
+      onEdit({ ...entry, id: existing.id, cycleNum: existing.cycleNum, jourDuCycle: existing.jourDuCycle });
+    } else {
+      onAdd(entry);
+    }
   };
 
   return (
@@ -801,57 +825,100 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
             </Card>
           </div>
 
-          {/* Tableau */}
+          {/* Tableau desktop / Cartes mobile */}
           <Card noPad>
-            <div className="tbl-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>J</th>
-                    <th>Date</th>
-                    <th>Temp.</th>
-                    <th>Saignement</th>
-                    <th>Glaire sensation</th>
-                    <th>Glaire apparence</th>
-                    <th>Col</th>
-                    <th>Rapport</th>
-                    <th>Note</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cycleEntries.map(e => (
-                    <tr key={e.id} onClick={() => openEdit(e)}>
-                      <td style={{ fontWeight: 600, color: C.primary, fontFamily: "Cormorant Garamond", fontSize: 16 }}>
-                        {e.jourDuCycle || "—"}
-                      </td>
-                      <td style={{ whiteSpace: "nowrap", fontSize: 13 }}>{fmtShort(e.date)}</td>
-                      <td style={{ fontWeight: e.temperature ? 600 : 400, fontFamily: e.temperature ? "Cormorant Garamond" : "inherit", fontSize: e.temperature ? 16 : 14 }}>
-                        {e.temperature ? `${e.temperature}°` : "—"}
-                      </td>
-                      <td><ValBadge opts={SAIGNEMENT_OPTS} val={e.saignement} /></td>
-                      <td><ValBadge opts={SENSATION_OPTS} val={e.glaireSensation} /></td>
-                      <td><ValBadge opts={APPARENCE_OPTS} val={e.glaireApparence} /></td>
-                      <td>
-                        {e.colFermete || e.colOuverture ? (
-                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                            {e.colFermete && <ValBadge opts={FERMETE_OPTS} val={e.colFermete} />}
-                            {e.colOuverture && <ValBadge opts={OUVERTURE_OPTS} val={e.colOuverture} />}
-                          </div>
-                        ) : "—"}
-                      </td>
-                      <td><ValBadge opts={RAPPORT_OPTS} val={e.rapport} /></td>
-                      <td style={{ fontSize: 12, color: "var(--muted-c)", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {e.perturbation || "—"}
-                      </td>
-                      <td onClick={ev => { ev.stopPropagation(); setConfirmId(e.id); }}>
-                        <span style={{ color: C.muted, cursor: "pointer", fontSize: 16 }}>✕</span>
-                      </td>
+            {isMobile ? (
+              <div>
+                {cycleEntries.map(e => (
+                  <div key={e.id} onClick={() => openEdit(e)} style={{
+                    padding: "14px 16px", borderBottom: "1px solid var(--border-c)",
+                    cursor: "pointer", transition: "background .15s",
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontFamily: "Cormorant Garamond", fontSize: 22, fontWeight: 600, color: C.primary, minWidth: 32 }}>
+                          J{e.jourDuCycle}
+                        </span>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{fmt(e.date)}</div>
+                          {e.temperature && (
+                            <div style={{ fontFamily: "Cormorant Garamond", fontSize: 17, fontWeight: 600, color: C.primaryDeep }}>
+                              {e.temperature}°C
+                              {e.heure && <span style={{ fontSize: 12, color: "var(--muted-c)", fontFamily: "DM Sans", fontWeight: 400, marginLeft: 6 }}>{e.heure}</span>}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <button onClick={ev => { ev.stopPropagation(); setConfirmId(e.id); }}
+                        style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 16, padding: "0 4px" }}>✕</button>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
+                      {e.saignement      && <ValBadge opts={SAIGNEMENT_OPTS} val={e.saignement} />}
+                      {e.glaireSensation && <ValBadge opts={SENSATION_OPTS}  val={e.glaireSensation} />}
+                      {e.glaireApparence && <ValBadge opts={APPARENCE_OPTS}  val={e.glaireApparence} />}
+                      {e.colFermete      && <ValBadge opts={FERMETE_OPTS}    val={e.colFermete} />}
+                      {e.colOuverture    && <ValBadge opts={OUVERTURE_OPTS}  val={e.colOuverture} />}
+                      {e.rapport         && <ValBadge opts={RAPPORT_OPTS}    val={e.rapport} />}
+                    </div>
+                    {e.perturbation && (
+                      <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 5, fontStyle: "italic" }}>
+                        {e.perturbation}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="tbl-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>J</th>
+                      <th>Date</th>
+                      <th>Temp.</th>
+                      <th>Saignement</th>
+                      <th>Glaire sensation</th>
+                      <th>Glaire apparence</th>
+                      <th>Col</th>
+                      <th>Rapport</th>
+                      <th>Note</th>
+                      <th></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {cycleEntries.map(e => (
+                      <tr key={e.id} onClick={() => openEdit(e)}>
+                        <td style={{ fontWeight: 600, color: C.primary, fontFamily: "Cormorant Garamond", fontSize: 16 }}>
+                          {e.jourDuCycle || "—"}
+                        </td>
+                        <td style={{ whiteSpace: "nowrap", fontSize: 13 }}>{fmtShort(e.date)}</td>
+                        <td style={{ fontWeight: e.temperature ? 600 : 400, fontFamily: e.temperature ? "Cormorant Garamond" : "inherit", fontSize: e.temperature ? 16 : 14 }}>
+                          {e.temperature ? `${e.temperature}°` : "—"}
+                        </td>
+                        <td><ValBadge opts={SAIGNEMENT_OPTS} val={e.saignement} /></td>
+                        <td><ValBadge opts={SENSATION_OPTS} val={e.glaireSensation} /></td>
+                        <td><ValBadge opts={APPARENCE_OPTS} val={e.glaireApparence} /></td>
+                        <td>
+                          {e.colFermete || e.colOuverture ? (
+                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                              {e.colFermete && <ValBadge opts={FERMETE_OPTS} val={e.colFermete} />}
+                              {e.colOuverture && <ValBadge opts={OUVERTURE_OPTS} val={e.colOuverture} />}
+                            </div>
+                          ) : "—"}
+                        </td>
+                        <td><ValBadge opts={RAPPORT_OPTS} val={e.rapport} /></td>
+                        <td style={{ fontSize: 12, color: "var(--muted-c)", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {e.perturbation || "—"}
+                        </td>
+                        <td onClick={ev => { ev.stopPropagation(); setConfirmId(e.id); }}>
+                          <span style={{ color: C.muted, cursor: "pointer", fontSize: 16 }}>✕</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Card>
         </>
       )}
@@ -862,6 +929,62 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
         message="Supprimer cette entrée ? Cette action est irréversible."
         onConfirm={() => { onDelete(confirmId); setConfirmId(null); }}
         onCancel={() => setConfirmId(null)} />
+
+      {/* Dialog doublon de date */}
+      {dupeDialog && (
+        <div onClick={() => setDupeDialog(null)} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: 24
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "var(--surface)", borderRadius: 18, padding: 28, maxWidth: 420, width: "100%",
+            boxShadow: "0 24px 64px rgba(0,0,0,.2)"
+          }}>
+            <div style={{ fontFamily: "Cormorant Garamond", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
+              Entrée existante
+            </div>
+            <p style={{ color: "var(--muted-c)", fontSize: 14, marginBottom: 22, lineHeight: 1.6 }}>
+              Il y a déjà une entrée pour le <strong>{fmt(dupeDialog.incoming.date)}</strong>. Que veux-tu faire ?
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button onClick={() => {
+                onEdit({ ...dupeDialog.incoming, id: dupeDialog.existing.id, cycleNum: dupeDialog.existing.cycleNum, jourDuCycle: dupeDialog.existing.jourDuCycle });
+                setDupeDialog(null);
+              }} style={{
+                padding: "12px 18px", borderRadius: 12, border: `1.5px solid ${C.primary}`,
+                background: C.primaryPale, color: C.primaryDeep, fontFamily: "inherit",
+                fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left"
+              }}>
+                Remplacer — écraser les données existantes
+              </button>
+              <button onClick={() => {
+                // Fusionner : les nouvelles valeurs écrasent les nulls de l'existante
+                const merged = { ...dupeDialog.existing };
+                Object.entries(dupeDialog.incoming).forEach(([k, v]) => {
+                  if (!["id","cycleNum","jourDuCycle"].includes(k) && v !== null && v !== "" && v !== undefined) {
+                    merged[k] = v;
+                  }
+                });
+                onEdit(merged);
+                setDupeDialog(null);
+              }} style={{
+                padding: "12px 18px", borderRadius: 12, border: `1.5px solid var(--border-c)`,
+                background: "var(--surface-2)", color: "var(--text-c)", fontFamily: "inherit",
+                fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left"
+              }}>
+                Fusionner — compléter les champs manquants
+              </button>
+              <button onClick={() => setDupeDialog(null)} style={{
+                padding: "10px 18px", borderRadius: 12, border: "none",
+                background: "transparent", color: "var(--muted-c)", fontFamily: "inherit",
+                fontSize: 14, cursor: "pointer", textAlign: "left"
+              }}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1391,7 +1514,7 @@ export default function App() {
         {!isMobile && <Sidebar />}
         {isMobile && <MobileHeader />}
         {isMobile && <Drawer />}
-        <main style={{ flex: 1, padding: isMobile ? "76px 18px 40px" : "44px 52px", maxWidth: isMobile ? undefined : 1100 }}>
+        <main className={isMobile ? "page-padding" : ""} style={{ flex: 1, padding: isMobile ? "76px 16px 40px" : "44px 52px", maxWidth: isMobile ? undefined : 1100 }}>
           {view === "dashboard"  && <Dashboard entries={entries} cycles={cycles} settings={settings} />}
           {view === "cycle"      && <CycleActuel entries={entries} cycles={cycles} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} currentCycleNum={currentCycleNum} isMobile={isMobile} />}
           {view === "historique" && <Historique entries={entries} cycles={cycles} />}
