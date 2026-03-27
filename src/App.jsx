@@ -87,7 +87,13 @@ const G = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
-  body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text-c); font-size: 14px; line-height: 1.5; }
+  html { overflow-x: hidden; }
+  body {
+    background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text-c);
+    font-size: 14px; line-height: 1.5;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
   :root {
     --bg: ${C.bg};
     --surface: ${C.white};
@@ -110,10 +116,11 @@ const G = `
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border-c); border-radius: 99px; }
   input, select, textarea {
-    font-family: inherit; font-size: 14px; color: var(--text-c);
+    font-family: inherit; font-size: 16px; color: var(--text-c);
     background: var(--surface); border: 1px solid var(--border-c);
     border-radius: 10px; padding: 9px 13px; width: 100%; outline: none;
     transition: border-color .2s, box-shadow .2s;
+    -webkit-appearance: none;
   }
   input:focus, select:focus, textarea:focus {
     border-color: ${C.primary}; box-shadow: 0 0 0 3px ${C.primaryPale};
@@ -126,12 +133,13 @@ const G = `
   tbody tr { border-bottom: 1px solid var(--border-c); cursor: pointer; transition: background .15s; }
   tbody tr:hover { background: var(--surface-2); }
   tbody td { padding: 11px 14px; }
-  .tbl-wrap { overflow-x: auto; }
+  .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
   .anim { animation: fadeUp .35s ease both; }
   .badge {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 3px 9px; border-radius: 99px; font-size: 12px; font-weight: 500;
+    white-space: nowrap;
   }
   .badge-orange { background: ${C.primaryPale}; color: ${C.primaryDeep}; }
   .badge-rose   { background: ${C.rosePale};    color: ${C.rose}; }
@@ -143,15 +151,10 @@ const G = `
   .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
   @media (max-width: 768px) {
     .form-grid { grid-template-columns: 1fr; }
-    .tbl-wrap { -webkit-overflow-scrolling: touch; }
     .grid-2col { grid-template-columns: 1fr !important; }
-    .kpi-grid  { grid-template-columns: 1fr 1fr !important; }
-    .page-padding { padding: 76px 16px 40px !important; }
-    .page-title h1 { font-size: 24px !important; }
+    .kpi-grid  { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
     .hide-mobile { display: none !important; }
-    .cycle-row-mobile { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px !important; }
-    .cycle-row-mobile .row-main { display: flex; align-items: center; gap: 10px; }
-    .cycle-row-mobile .row-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+    .historique-grid { grid-template-columns: 1fr !important; }
   }
 `;
 
@@ -299,20 +302,58 @@ function Field({ label, children, full }) {
 }
 
 function Modal({ open, onClose, title, subtitle, children }) {
+  const isMob = typeof window !== "undefined" && window.innerWidth <= 768;
   useEffect(() => {
     const handle = (e) => { if (e.key === "Escape") onClose(); };
-    if (open) document.addEventListener("keydown", handle);
-    return () => document.removeEventListener("keydown", handle);
+    if (open) {
+      document.addEventListener("keydown", handle);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.removeEventListener("keydown", handle);
+      document.body.style.overflow = "";
+    };
   }, [open, onClose]);
   if (!open) return null;
+
+  if (isMob) {
+    return (
+      <div onClick={onClose} style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 1000,
+        display: "flex", alignItems: "flex-end",
+      }}>
+        <div onClick={e => e.stopPropagation()} style={{
+          background: "var(--surface)", borderRadius: "20px 20px 0 0",
+          width: "100%", maxHeight: "92vh", display: "flex", flexDirection: "column",
+          boxShadow: "0 -8px 40px rgba(0,0,0,.18)",
+        }}>
+          <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0" }}>
+            <div style={{ width: 36, height: 4, borderRadius: 99, background: "var(--border-c)" }} />
+          </div>
+          <div style={{ padding: "14px 20px 12px", borderBottom: "1px solid var(--border-c)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexShrink: 0 }}>
+            <div>
+              <div style={{ fontFamily: "Cormorant Garamond", fontSize: 20, fontWeight: 600 }}>{title}</div>
+              {subtitle && <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 2 }}>{subtitle}</div>}
+            </div>
+            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted-c)", padding: "0 4px", flexShrink: 0 }}>✕</button>
+          </div>
+          <div style={{ padding: "18px 20px 32px", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+            {children}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div onClick={onClose} style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", backdropFilter: "blur(4px)",
-      display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "16px"
+      display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 1000,
+      padding: "60px 16px 16px", overflowY: "auto",
     }}>
       <div onClick={e => e.stopPropagation()} style={{
         background: "var(--surface)", borderRadius: 20, width: "100%", maxWidth: 600,
-        maxHeight: "90vh", overflow: "auto", boxShadow: "0 24px 64px rgba(0,0,0,.18)",
+        boxShadow: "0 24px 64px rgba(0,0,0,.18)", marginBottom: 16,
       }}>
         <div style={{ padding: "22px 26px 18px", borderBottom: "1px solid var(--border-c)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
@@ -1049,7 +1090,7 @@ function Historique({ entries, cycles, onExport }) {
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: selectedCycle ? "280px 1fr" : "1fr", gap: 20 }}>
+      <div className="historique-grid" style={{ display: "grid", gridTemplateColumns: selectedCycle ? "280px 1fr" : "1fr", gap: 20 }}>
         {/* Liste des cycles */}
         <div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1358,17 +1399,33 @@ export default function App() {
   const handleNewCycle = useCallback(() => {
     const newNum = currentCycleNum + 1;
     const today = new Date().toISOString().slice(0, 10);
-    const newEntry = {
-      id: Date.now(), date: today, cycleNum: newNum, jourDuCycle: 1,
-      temperature: null, saignement: "normal",
-      glaireSensation: null, glaireApparence: null,
-      colFermete: null, colOuverture: null,
-      rapport: null, perturbation: null, heure: null,
-    };
-    setEntries(prev => [...prev, newEntry]);
-    setCycles(prev => [...prev, { cycleNum: newNum, dateDebut: today, dateFin: today }]);
+
+    // Supprimer du cycle précédent toutes les entrées >= aujourd'hui (jours "vides" du futur)
+    setEntries(prev => {
+      const trimmed = prev.filter(e => !(e.cycleNum === currentCycleNum && e.date >= today));
+      const newEntry = {
+        id: Date.now(), date: today, cycleNum: newNum, jourDuCycle: 1,
+        temperature: null, saignement: null,
+        glaireSensation: null, glaireApparence: null,
+        colFermete: null, colOuverture: null,
+        rapport: null, perturbation: null, heure: null,
+      };
+      return [...trimmed, newEntry];
+    });
+
+    // Mettre à jour les bornes du cycle précédent et créer le nouveau
+    setCycles(prev => {
+      const prevCycleEntries = entries.filter(e => e.cycleNum === currentCycleNum && e.date < today);
+      const prevDates = prevCycleEntries.map(e => e.date).sort();
+      const updatedPrev = prev.map(c => c.cycleNum === currentCycleNum
+        ? { ...c, dateFin: prevDates[prevDates.length - 1] || c.dateDebut, nbJours: prevDates.length, nbEntrees: prevDates.length }
+        : c
+      );
+      return [...updatedPrev, { cycleNum: newNum, dateDebut: today, dateFin: today, nbJours: 1, nbEntrees: 1 }];
+    });
+
     setView("cycle");
-  }, [currentCycleNum]);
+  }, [currentCycleNum, entries]);
 
   const handleLoad = useCallback((data) => {
     const newEntries = data.entries || [];
