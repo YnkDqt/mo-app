@@ -318,27 +318,38 @@ function Modal({ open, onClose, title, subtitle, children }) {
   if (!open) return null;
 
   if (isMob) {
+    const HEADER_H = subtitle ? 96 : 80; // handle(28) + header(52 ou 68 avec subtitle)
     return (
       <div onClick={onClose} style={{
         position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 1000,
-        display: "flex", alignItems: "flex-end",
       }}>
         <div onClick={e => e.stopPropagation()} style={{
+          position: "absolute", bottom: 0, left: 0, right: 0,
+          height: "92%",
           background: "var(--surface)", borderRadius: "20px 20px 0 0",
-          width: "100%", height: "92vh", display: "flex", flexDirection: "column",
           boxShadow: "0 -8px 40px rgba(0,0,0,.18)",
+          overflow: "hidden",
         }}>
-          <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0", flexShrink: 0 }}>
-            <div style={{ width: 36, height: 4, borderRadius: 99, background: "var(--border-c)" }} />
-          </div>
-          <div style={{ padding: "14px 20px 12px", borderBottom: "1px solid var(--border-c)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexShrink: 0 }}>
-            <div>
-              <div style={{ fontFamily: "Cormorant Garamond", fontSize: 20, fontWeight: 600 }}>{title}</div>
-              {subtitle && <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 2 }}>{subtitle}</div>}
+          {/* Header — hauteur fixe */}
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: HEADER_H, zIndex: 1, background: "var(--surface)", borderRadius: "20px 20px 0 0" }}>
+            <div style={{ textAlign: "center", padding: "12px 0 8px" }}>
+              <div style={{ display: "inline-block", width: 36, height: 4, borderRadius: 99, background: "var(--border-c)" }} />
             </div>
-            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted-c)", padding: "0 4px", flexShrink: 0 }}>✕</button>
+            <div style={{ padding: "0 20px 12px", borderBottom: "1px solid var(--border-c)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <div style={{ fontFamily: "Cormorant Garamond", fontSize: 20, fontWeight: 600 }}>{title}</div>
+                {subtitle && <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 1 }}>{subtitle}</div>}
+              </div>
+              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--muted-c)", lineHeight: 1, padding: "4px 6px", marginLeft: 8 }}>✕</button>
+            </div>
           </div>
-          <div style={{ flex: 1, overflowY: "scroll", WebkitOverflowScrolling: "touch", padding: "18px 20px 48px" }}>
+          {/* Contenu scrollable — commence exactement après le header */}
+          <div style={{
+            position: "absolute", top: HEADER_H, bottom: 0, left: 0, right: 0,
+            overflowY: "scroll",
+            WebkitOverflowScrolling: "touch",
+            padding: "16px 20px 80px",
+          }}>
             {children}
           </div>
         </div>
