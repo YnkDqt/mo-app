@@ -1296,12 +1296,15 @@ function Parametres({ settings, onUpdate, onNewCycle, currentCycleNum }) {
         </Card>
 
         <Card>
-          <div style={{ fontWeight: 600, marginBottom: 16, fontSize: 15 }}>Nouveau cycle</div>
-          <p style={{ fontSize: 13, color: "var(--muted-c)", marginBottom: 16 }}>
-            Commence un nouveau cycle (cycle {currentCycleNum + 1}). À utiliser le premier jour de tes règles.
+          <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 15 }}>Nouveau cycle</div>
+          <p style={{ fontSize: 13, color: "var(--muted-c)", marginBottom: 10, lineHeight: 1.6 }}>
+            À utiliser le premier jour de tes règles (cycle {currentCycleNum + 1}).
           </p>
+          <div style={{ fontSize: 13, background: C.sagePale, border: `1px solid ${C.sage}40`, borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: C.sage.replace("8F", "5A"), lineHeight: 1.6 }}>
+            💾 Un fichier de sauvegarde sera automatiquement téléchargé. Enregistre-le dans ton Drive ou envoie-le par mail pour ne pas perdre tes données.
+          </div>
           <Btn variant="soft" onClick={() => {
-            if (confirm(`Commencer le cycle ${currentCycleNum + 1} aujourd'hui ?`)) {
+            if (confirm(`Commencer le cycle ${currentCycleNum + 1} aujourd'hui ?\n\nUn fichier de sauvegarde sera téléchargé automatiquement.`)) {
               onNewCycle();
             }
           }}>
@@ -1453,7 +1456,32 @@ export default function App() {
     const newNum = currentCycleNum + 1;
     const today = new Date().toISOString().slice(0, 10);
 
-    // Supprimer du cycle précédent toutes les entrées >= aujourd'hui (jours "vides" du futur)
+    // Snapshot des données actuelles AVANT mutation — pour la sauvegarde
+    const prevCycleEntries = entries.filter(e => e.cycleNum === currentCycleNum && e.date < today);
+    const prevDates = prevCycleEntries.map(e => e.date).sort();
+    const updatedPrevCycle = cycles.map(c => c.cycleNum === currentCycleNum
+      ? { ...c, dateFin: prevDates[prevDates.length - 1] || c.dateDebut, nbJours: prevDates.length }
+      : c
+    );
+    const snapshotEntries = entries.filter(e => !(e.cycleNum === currentCycleNum && e.date >= today));
+    const snapshotData = {
+      entries: snapshotEntries,
+      cycles: updatedPrevCycle,
+      settings,
+      exportedAt: new Date().toISOString(),
+      meta: { totalCycles: currentCycleNum, cycleTermine: currentCycleNum, dateExport: today }
+    };
+
+    // Téléchargement automatique de la sauvegarde
+    const blob = new Blob([JSON.stringify(snapshotData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `mo-sauvegarde-avant-cycle${newNum}-${today}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    // Mutation du state
     setEntries(prev => {
       const trimmed = prev.filter(e => !(e.cycleNum === currentCycleNum && e.date >= today));
       const newEntry = {
@@ -1466,10 +1494,7 @@ export default function App() {
       return [...trimmed, newEntry];
     });
 
-    // Mettre à jour les bornes du cycle précédent et créer le nouveau
     setCycles(prev => {
-      const prevCycleEntries = entries.filter(e => e.cycleNum === currentCycleNum && e.date < today);
-      const prevDates = prevCycleEntries.map(e => e.date).sort();
       const updatedPrev = prev.map(c => c.cycleNum === currentCycleNum
         ? { ...c, dateFin: prevDates[prevDates.length - 1] || c.dateDebut, nbJours: prevDates.length, nbEntrees: prevDates.length }
         : c
@@ -1478,7 +1503,7 @@ export default function App() {
     });
 
     setView("cycle");
-  }, [currentCycleNum, entries]);
+  }, [currentCycleNum, entries, cycles, settings]);
 
   const handleLoad = useCallback((data) => {
     const newEntries = data.entries || [];
