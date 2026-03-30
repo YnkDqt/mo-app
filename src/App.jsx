@@ -33,10 +33,11 @@ const C = {
 
 // ─── CONSTANTES ─────────────────────────────────────────────────────────────
 const SAIGNEMENT_OPTS = [
-  { value: "spotting",  label: "Spotting",  color: C.secondary },
-  { value: "faible",   label: "Faible",    color: C.yellow },
-  { value: "normal",   label: "Normal",    color: C.primary },
-  { value: "abondant", label: "Abondant",  color: C.red },
+  { value: "aucun",    label: "Aucun",    color: C.muted },
+  { value: "spotting", label: "Spotting", color: C.secondary },
+  { value: "faible",   label: "Faible",   color: C.yellow },
+  { value: "normal",   label: "Normal",   color: C.primary },
+  { value: "abondant", label: "Abondant", color: C.red },
 ];
 const SENSATION_OPTS = [
   { value: "seche",      label: "Sèche",      color: C.yellow },
@@ -324,10 +325,10 @@ function Modal({ open, onClose, title, subtitle, children }) {
       }}>
         <div onClick={e => e.stopPropagation()} style={{
           background: "var(--surface)", borderRadius: "20px 20px 0 0",
-          width: "100%", maxHeight: "92vh", display: "flex", flexDirection: "column",
+          width: "100%", height: "92vh", display: "flex", flexDirection: "column",
           boxShadow: "0 -8px 40px rgba(0,0,0,.18)",
         }}>
-          <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0" }}>
+          <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 0", flexShrink: 0 }}>
             <div style={{ width: 36, height: 4, borderRadius: 99, background: "var(--border-c)" }} />
           </div>
           <div style={{ padding: "14px 20px 12px", borderBottom: "1px solid var(--border-c)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexShrink: 0 }}>
@@ -337,7 +338,7 @@ function Modal({ open, onClose, title, subtitle, children }) {
             </div>
             <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted-c)", padding: "0 4px", flexShrink: 0 }}>✕</button>
           </div>
-          <div style={{ padding: "18px 20px 32px", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+          <div style={{ flex: 1, overflowY: "scroll", WebkitOverflowScrolling: "touch", padding: "18px 20px 48px" }}>
             {children}
           </div>
         </div>
@@ -349,11 +350,11 @@ function Modal({ open, onClose, title, subtitle, children }) {
     <div onClick={onClose} style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", backdropFilter: "blur(4px)",
       display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 1000,
-      padding: "60px 16px 16px", overflowY: "auto",
+      padding: "40px 16px 40px", overflowY: "auto",
     }}>
       <div onClick={e => e.stopPropagation()} style={{
         background: "var(--surface)", borderRadius: 20, width: "100%", maxWidth: 600,
-        boxShadow: "0 24px 64px rgba(0,0,0,.18)", marginBottom: 16,
+        boxShadow: "0 24px 64px rgba(0,0,0,.18)", marginBottom: 16, flexShrink: 0,
       }}>
         <div style={{ padding: "22px 26px 18px", borderBottom: "1px solid var(--border-c)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
