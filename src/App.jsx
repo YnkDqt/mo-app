@@ -305,58 +305,77 @@ function Field({ label, children, full }) {
 function Modal({ open, onClose, title, subtitle, children }) {
   const isMob = typeof window !== "undefined" && window.innerWidth <= 768;
   useEffect(() => {
+    if (!open) return;
+    // iOS Safari : bloquer le scroll sans décaler la page
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
     const handle = (e) => { if (e.key === "Escape") onClose(); };
-    if (open) {
-      document.addEventListener("keydown", handle);
-      document.body.style.overflow = "hidden";
-    }
+    document.addEventListener("keydown", handle);
     return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, scrollY);
       document.removeEventListener("keydown", handle);
-      document.body.style.overflow = "";
     };
   }, [open, onClose]);
   if (!open) return null;
 
   if (isMob) {
-    const HEADER_H = subtitle ? 96 : 80; // handle(28) + header(52 ou 68 avec subtitle)
+    // Sur iOS Safari : tout en position:fixed, jamais d'absolute imbriqué
+    // Header fixé en haut du sheet, contenu fixé dessous
+    const TOP = "8%"; // le sheet commence à 8% du haut = 92% de hauteur
     return (
-      <div onClick={onClose} style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 1000,
-      }}>
-        <div onClick={e => e.stopPropagation()} style={{
-          position: "absolute", bottom: 0, left: 0, right: 0,
-          height: "92%",
+      <>
+        {/* Fond sombre */}
+        <div onClick={onClose} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 1000,
+        }} />
+        {/* Handle bar */}
+        <div style={{
+          position: "fixed", top: TOP, left: 0, right: 0, zIndex: 1002,
+          display: "flex", justifyContent: "center", padding: "10px 0",
           background: "var(--surface)", borderRadius: "20px 20px 0 0",
-          boxShadow: "0 -8px 40px rgba(0,0,0,.18)",
-          overflow: "hidden",
         }}>
-          {/* Header — hauteur fixe */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: HEADER_H, zIndex: 1, background: "var(--surface)", borderRadius: "20px 20px 0 0" }}>
-            <div style={{ textAlign: "center", padding: "12px 0 8px" }}>
-              <div style={{ display: "inline-block", width: 36, height: 4, borderRadius: 99, background: "var(--border-c)" }} />
-            </div>
-            <div style={{ padding: "0 20px 12px", borderBottom: "1px solid var(--border-c)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontFamily: "Cormorant Garamond", fontSize: 20, fontWeight: 600 }}>{title}</div>
-                {subtitle && <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 1 }}>{subtitle}</div>}
-              </div>
-              <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--muted-c)", lineHeight: 1, padding: "4px 6px", marginLeft: 8 }}>✕</button>
-            </div>
-          </div>
-          {/* Contenu scrollable — commence exactement après le header */}
-          <div style={{
-            position: "absolute", top: HEADER_H, bottom: 0, left: 0, right: 0,
-            overflowY: "scroll",
-            WebkitOverflowScrolling: "touch",
-            padding: "16px 20px 80px",
-          }}>
-            {children}
-          </div>
+          <div style={{ width: 36, height: 4, borderRadius: 99, background: "var(--border-c)" }} />
         </div>
-      </div>
+        {/* Header titre */}
+        <div style={{
+          position: "fixed", top: `calc(${TOP} + 28px)`, left: 0, right: 0, zIndex: 1002,
+          padding: "8px 20px 12px",
+          borderBottom: "1px solid var(--border-c)",
+          background: "var(--surface)",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <div>
+            <div style={{ fontFamily: "Cormorant Garamond", fontSize: 20, fontWeight: 600 }}>{title}</div>
+            {subtitle && <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 1 }}>{subtitle}</div>}
+          </div>
+          <button onClick={onClose} style={{
+            background: "none", border: "none", fontSize: 22, cursor: "pointer",
+            color: "var(--muted-c)", lineHeight: 1, padding: "6px 8px",
+          }}>✕</button>
+        </div>
+        {/* Zone de contenu scrollable — fixed avec top calculé */}
+        <div style={{
+          position: "fixed",
+          top: `calc(${TOP} + ${subtitle ? 96 : 80}px)`,
+          bottom: 0, left: 0, right: 0,
+          zIndex: 1001,
+          background: "var(--surface)",
+          overflowY: "scroll",
+          WebkitOverflowScrolling: "touch",
+          padding: "16px 20px 100px",
+        }}>
+          {children}
+        </div>
+      </>
     );
   }
 
+  // Desktop
   return (
     <div onClick={onClose} style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", backdropFilter: "blur(4px)",
