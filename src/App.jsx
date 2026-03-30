@@ -1062,7 +1062,7 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
 }
 
 // ─── HISTORIQUE ──────────────────────────────────────────────────────────────
-function Historique({ entries, cycles, onExport }) {
+function Historique({ entries, cycles, isMobile }) {
   const [selectedCycle, setSelectedCycle] = useState(null);
   const [search, setSearch] = useState("");
 
@@ -1080,156 +1080,178 @@ function Historique({ entries, cycles, onExport }) {
     [cycles]
   );
 
-  const cycleEntries = selectedCycle ? (cycleGroups[selectedCycle] || []).sort((a, b) => a.date.localeCompare(b.date)) : [];
-  const ov = selectedCycle ? detectOvulation(cycleEntries) : null;
-
-  const filteredEntries = useMemo(() => {
-    if (!search) return cycleEntries;
-    const q = search.toLowerCase();
-    return cycleEntries.filter(e =>
-      (e.perturbation || "").toLowerCase().includes(q) ||
-      (e.saignement || "").toLowerCase().includes(q) ||
-      (e.date || "").includes(q)
-    );
-  }, [cycleEntries, search]);
-
-  const tempData = cycleEntries
-    .filter(e => e.temperature && e.jourDuCycle)
-    .map(e => ({ jour: e.jourDuCycle, temp: e.temperature }));
+  const toggle = (num) => {
+    setSelectedCycle(prev => prev === num ? null : num);
+    setSearch("");
+  };
 
   return (
     <div className="anim">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>
-        <PageTitle sub={`${cycles.length} cycles · ${entries.length} entrées totales`}>
-          Historique
-        </PageTitle>
-        {selectedCycle && (
-          <Btn variant="ghost" size="sm" onClick={() => {
-            exportCSV(cycleEntries, `mo-cycle${selectedCycle}.csv`, [
-              { label: "Date", key: "date" },
-              { label: "Jour", key: "jourDuCycle" },
-              { label: "Température", key: "temperature" },
-              { label: "Saignement", key: row => optLabel(SAIGNEMENT_OPTS, row.saignement) },
-              { label: "Glaire sensation", key: row => optLabel(SENSATION_OPTS, row.glaireSensation) },
-              { label: "Glaire apparence", key: row => optLabel(APPARENCE_OPTS, row.glaireApparence) },
-              { label: "Col fermeté", key: row => optLabel(FERMETE_OPTS, row.colFermete) },
-              { label: "Col ouverture", key: row => optLabel(OUVERTURE_OPTS, row.colOuverture) },
-              { label: "Rapport", key: row => optLabel(RAPPORT_OPTS, row.rapport) },
-              { label: "Perturbation", key: "perturbation" },
-            ]);
-          }}>⬇ Export CSV</Btn>
-        )}
-      </div>
+      <PageTitle sub={`${cycles.length} cycles · ${entries.length} entrées totales`}>
+        Historique
+      </PageTitle>
 
-      <div className="historique-grid" style={{ display: "grid", gridTemplateColumns: selectedCycle ? "280px 1fr" : "1fr", gap: 20 }}>
-        {/* Liste des cycles */}
-        <div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {sortedCycles.map(c => {
-              const ents = cycleGroups[c.cycleNum] || [];
-              const cvOv = detectOvulation(ents);
-              const len = ents.length;
-              return (
-                <div key={c.cycleNum}
-                  onClick={() => setSelectedCycle(selectedCycle === c.cycleNum ? null : c.cycleNum)}
-                  style={{
-                    padding: "14px 18px", borderRadius: 14,
-                    background: selectedCycle === c.cycleNum ? C.primaryPale : "var(--surface)",
-                    border: `1px solid ${selectedCycle === c.cycleNum ? C.primary + "60" : "var(--border-c)"}`,
-                    cursor: "pointer", transition: "all .15s",
-                  }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <div style={{ fontFamily: "Cormorant Garamond", fontSize: 18, fontWeight: 600,
-                        color: selectedCycle === c.cycleNum ? C.primaryDeep : "var(--text-c)" }}>
-                        Cycle {c.cycleNum}
-                      </div>
-                      <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 2 }}>
-                        {fmt(c.dateDebut)} → {fmt(c.dateFin)}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontWeight: 600, color: C.primary }}>{len}j</div>
-                      {cvOv && <div style={{ fontSize: 11, color: C.sage }}>Ov. J{cvOv.day}</div>}
-                    </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {sortedCycles.map(c => {
+          const ents = (cycleGroups[c.cycleNum] || []).sort((a, b) => a.date.localeCompare(b.date));
+          const cvOv = detectOvulation(ents);
+          const open = selectedCycle === c.cycleNum;
+
+          const filteredEnts = search
+            ? ents.filter(e =>
+                (e.perturbation || "").toLowerCase().includes(search.toLowerCase()) ||
+                (e.saignement || "").toLowerCase().includes(search.toLowerCase()) ||
+                (e.date || "").includes(search)
+              )
+            : ents;
+
+          const tempData = ents
+            .filter(e => e.temperature && e.jourDuCycle)
+            .map(e => ({ jour: e.jourDuCycle, temp: e.temperature }));
+
+          return (
+            <div key={c.cycleNum} style={{ borderRadius: 16, border: `1px solid ${open ? C.primary + "50" : "var(--border-c)"}`, overflow: "hidden", transition: "border-color .2s" }}>
+              {/* En-tête cliquable */}
+              <div onClick={() => toggle(c.cycleNum)} style={{
+                padding: "14px 18px", cursor: "pointer",
+                background: open ? C.primaryPale : "var(--surface)",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                transition: "background .15s",
+              }}>
+                <div>
+                  <div style={{ fontFamily: "Cormorant Garamond", fontSize: 18, fontWeight: 600, color: open ? C.primaryDeep : "var(--text-c)" }}>
+                    Cycle {c.cycleNum}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 2 }}>
+                    {fmt(c.dateDebut)} → {fmt(c.dateFin)}
+                    {cvOv ? <span style={{ marginLeft: 8, color: C.sage }}>· Ov. J{cvOv.day}</span> : null}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Détail du cycle sélectionné */}
-        {selectedCycle && (
-          <div>
-            <Card style={{ marginBottom: 16 }}>
-              <div style={{ fontWeight: 600, marginBottom: 12 }}>
-                Cycle {selectedCycle}
-                {ov && <span style={{ marginLeft: 10, fontSize: 13, color: C.sage, fontWeight: 400 }}>Ovulation détectée J{ov.day}</span>}
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ fontWeight: 600, color: C.primary, fontSize: 15 }}>{ents.length}j</div>
+                  <span style={{ color: "var(--muted-c)", fontSize: 18, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s", lineHeight: 1 }}>▾</span>
+                </div>
               </div>
-              <ResponsiveContainer width="100%" height={160}>
-                <LineChart data={tempData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-c)" />
-                  <XAxis dataKey="jour" tick={{ fontSize: 10 }} />
-                  <YAxis domain={["dataMin - 0.1", "dataMax + 0.1"]} tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={{ background: "var(--surface)", border: `1px solid var(--border-c)`, borderRadius: 10, fontSize: 12 }}
-                    formatter={(v) => [`${v}°C`, "Temp."]} />
-                  {ov && <ReferenceLine x={ov.day} stroke={C.sage} strokeDasharray="4 2" />}
-                  <Line type="monotone" dataKey="temp" stroke={C.primary} strokeWidth={2} dot={{ r: 2 }} connectNulls={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </Card>
 
-            <div style={{ marginBottom: 12 }}>
-              <input placeholder="Chercher (note, symptôme, date…)" value={search} onChange={e => setSearch(e.target.value)} />
+              {/* Contenu déplié */}
+              {open && (
+                <div style={{ borderTop: `1px solid var(--border-c)`, background: "var(--surface)" }}>
+                  {/* Graphique température */}
+                  {tempData.length > 0 && (
+                    <div style={{ padding: "16px 18px 0" }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".05em" }}>
+                        Courbe de température
+                        {cvOv && <span style={{ marginLeft: 8, color: C.sage, fontWeight: 400, textTransform: "none" }}>Ovulation J{cvOv.day}</span>}
+                      </div>
+                      <ResponsiveContainer width="100%" height={140}>
+                        <LineChart data={tempData} margin={{ top: 4, right: 8, bottom: 0, left: -22 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-c)" />
+                          <XAxis dataKey="jour" tick={{ fontSize: 10 }} />
+                          <YAxis domain={["dataMin - 0.1", "dataMax + 0.1"]} tick={{ fontSize: 10 }} />
+                          <Tooltip contentStyle={{ background: "var(--surface)", border: `1px solid var(--border-c)`, borderRadius: 10, fontSize: 12 }}
+                            formatter={(v) => [`${v}°C`, "Temp."]} />
+                          {cvOv && <ReferenceLine x={cvOv.day} stroke={C.sage} strokeDasharray="4 2" />}
+                          <Line type="monotone" dataKey="temp" stroke={C.primary} strokeWidth={2} dot={{ r: 2 }} connectNulls={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Barre de recherche + export */}
+                  <div style={{ padding: "12px 18px", display: "flex", gap: 10, alignItems: "center" }}>
+                    <input placeholder="Chercher…" value={search} onChange={e => setSearch(e.target.value)}
+                      style={{ flex: 1 }} />
+                    <Btn variant="ghost" size="sm" onClick={() => {
+                      exportCSV(ents, `mo-cycle${c.cycleNum}.csv`, [
+                        { label: "Date", key: "date" },
+                        { label: "Jour", key: "jourDuCycle" },
+                        { label: "Température", key: "temperature" },
+                        { label: "Saignement", key: row => optLabel(SAIGNEMENT_OPTS, row.saignement) },
+                        { label: "Glaire sensation", key: row => optLabel(SENSATION_OPTS, row.glaireSensation) },
+                        { label: "Glaire apparence", key: row => optLabel(APPARENCE_OPTS, row.glaireApparence) },
+                        { label: "Col fermeté", key: row => optLabel(FERMETE_OPTS, row.colFermete) },
+                        { label: "Col ouverture", key: row => optLabel(OUVERTURE_OPTS, row.colOuverture) },
+                        { label: "Rapport", key: row => optLabel(RAPPORT_OPTS, row.rapport) },
+                        { label: "Perturbation", key: "perturbation" },
+                      ]);
+                    }}>⬇ CSV</Btn>
+                  </div>
+
+                  {/* Entrées : cartes sur mobile, tableau sur desktop */}
+                  {isMobile ? (
+                    <div style={{ borderTop: `1px solid var(--border-c)` }}>
+                      {filteredEnts.map(e => (
+                        <div key={e.id} style={{ padding: "12px 18px", borderBottom: `1px solid var(--border-c)` }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <span style={{ fontFamily: "Cormorant Garamond", fontSize: 20, fontWeight: 600, color: C.primary }}>J{e.jourDuCycle}</span>
+                              <span style={{ fontSize: 13 }}>{fmtShort(e.date)}</span>
+                            </div>
+                            {e.temperature && (
+                              <span style={{ fontFamily: "Cormorant Garamond", fontSize: 17, fontWeight: 600, color: C.primaryDeep }}>{e.temperature}°</span>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                            {e.saignement      && <ValBadge opts={SAIGNEMENT_OPTS} val={e.saignement} />}
+                            {e.glaireSensation && <ValBadge opts={SENSATION_OPTS}  val={e.glaireSensation} />}
+                            {e.glaireApparence && <ValBadge opts={APPARENCE_OPTS}  val={e.glaireApparence} />}
+                            {e.colFermete      && <ValBadge opts={FERMETE_OPTS}    val={e.colFermete} />}
+                            {e.colOuverture    && <ValBadge opts={OUVERTURE_OPTS}  val={e.colOuverture} />}
+                            {e.rapport         && <ValBadge opts={RAPPORT_OPTS}    val={e.rapport} />}
+                          </div>
+                          {e.perturbation && (
+                            <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 5, fontStyle: "italic" }}>{e.perturbation}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="tbl-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>J</th><th>Date</th><th>T°</th><th>Saign.</th>
+                            <th>Glaire</th><th>Col</th><th>Rapport</th><th>Note</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredEnts.map(e => (
+                            <tr key={e.id} style={{ cursor: "default" }}>
+                              <td style={{ fontWeight: 600, color: C.primary, fontFamily: "Cormorant Garamond", fontSize: 15 }}>{e.jourDuCycle}</td>
+                              <td style={{ fontSize: 12, whiteSpace: "nowrap" }}>{fmtShort(e.date)}</td>
+                              <td style={{ fontFamily: "Cormorant Garamond", fontSize: 15, fontWeight: 500 }}>{e.temperature ? `${e.temperature}°` : "—"}</td>
+                              <td><ValBadge opts={SAIGNEMENT_OPTS} val={e.saignement} /></td>
+                              <td>
+                                {e.glaireSensation || e.glaireApparence ? (
+                                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                    {e.glaireSensation && <ValBadge opts={SENSATION_OPTS} val={e.glaireSensation} />}
+                                    {e.glaireApparence && <ValBadge opts={APPARENCE_OPTS} val={e.glaireApparence} />}
+                                  </div>
+                                ) : "—"}
+                              </td>
+                              <td>
+                                {e.colFermete || e.colOuverture ? (
+                                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                    {e.colFermete && <ValBadge opts={FERMETE_OPTS} val={e.colFermete} />}
+                                    {e.colOuverture && <ValBadge opts={OUVERTURE_OPTS} val={e.colOuverture} />}
+                                  </div>
+                                ) : "—"}
+                              </td>
+                              <td><ValBadge opts={RAPPORT_OPTS} val={e.rapport} /></td>
+                              <td style={{ fontSize: 12, color: "var(--muted-c)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {e.perturbation || "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-
-            <Card noPad>
-              <div className="tbl-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>J</th><th>Date</th><th>T°</th><th>Saign.</th>
-                      <th>Glaire</th><th>Col</th><th>Rapport</th><th>Note</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredEntries.map(e => (
-                      <tr key={e.id} style={{ cursor: "default" }}>
-                        <td style={{ fontWeight: 600, color: C.primary, fontFamily: "Cormorant Garamond", fontSize: 15 }}>{e.jourDuCycle}</td>
-                        <td style={{ fontSize: 12, whiteSpace: "nowrap" }}>{fmtShort(e.date)}</td>
-                        <td style={{ fontFamily: "Cormorant Garamond", fontSize: 15, fontWeight: 500 }}>
-                          {e.temperature ? `${e.temperature}°` : "—"}
-                        </td>
-                        <td><ValBadge opts={SAIGNEMENT_OPTS} val={e.saignement} /></td>
-                        <td>
-                          {e.glaireSensation || e.glaireApparence ? (
-                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                              {e.glaireSensation && <ValBadge opts={SENSATION_OPTS} val={e.glaireSensation} />}
-                              {e.glaireApparence && <ValBadge opts={APPARENCE_OPTS} val={e.glaireApparence} />}
-                            </div>
-                          ) : "—"}
-                        </td>
-                        <td>
-                          {e.colFermete || e.colOuverture ? (
-                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                              {e.colFermete && <ValBadge opts={FERMETE_OPTS} val={e.colFermete} />}
-                              {e.colOuverture && <ValBadge opts={OUVERTURE_OPTS} val={e.colOuverture} />}
-                            </div>
-                          ) : "—"}
-                        </td>
-                        <td><ValBadge opts={RAPPORT_OPTS} val={e.rapport} /></td>
-                        <td style={{ fontSize: 12, color: "var(--muted-c)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {e.perturbation || "—"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          </div>
-        )}
+          );
+        })}
       </div>
     </div>
   );
@@ -1605,7 +1627,7 @@ export default function App() {
         <main className={isMobile ? "page-padding" : ""} style={{ flex: 1, padding: isMobile ? "76px 16px 40px" : "44px 52px", maxWidth: isMobile ? undefined : 1100 }}>
           {view === "dashboard"  && <Dashboard entries={entries} cycles={cycles} settings={settings} />}
           {view === "cycle"      && <CycleActuel entries={entries} cycles={cycles} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} currentCycleNum={currentCycleNum} isMobile={isMobile} />}
-          {view === "historique" && <Historique entries={entries} cycles={cycles} />}
+          {view === "historique" && <Historique entries={entries} cycles={cycles} isMobile={isMobile} />}
           {view === "params"     && <Parametres settings={settings} onUpdate={setSettings} onNewCycle={handleNewCycle} currentCycleNum={currentCycleNum} />}
         </main>
       </div>
