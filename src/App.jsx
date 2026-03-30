@@ -1610,9 +1610,46 @@ export default function App() {
     </>
   );
 
+  // Bannière iOS — s'affiche uniquement sur Safari iOS, pas déjà installée, pas déjà fermée
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  const [iosBannerDismissed, setIosBannerDismissed] = useState(() => localStorage.getItem("mo_ios_banner") === "1");
+  const showIOSBanner = isIOS && !isStandalone && !iosBannerDismissed && isMobile;
+
+  const dismissIOSBanner = () => {
+    localStorage.setItem("mo_ios_banner", "1");
+    setIosBannerDismissed(true);
+  };
+
   return (
     <>
       <style>{G}</style>
+
+      {/* Bannière installation iOS */}
+      {showIOSBanner && (
+        <div style={{
+          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 500,
+          background: "var(--surface)", borderTop: `2px solid ${C.primary}`,
+          padding: "16px 18px 28px", boxShadow: "0 -4px 24px rgba(0,0,0,.12)",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <img src="/icon-192.png" style={{ width: 36, height: 36, borderRadius: 8 }} alt="" />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>Installer Mo sur ton iPhone</div>
+                <div style={{ fontSize: 12, color: "var(--muted-c)" }}>Accès rapide depuis l'écran d'accueil</div>
+              </div>
+            </div>
+            <button onClick={dismissIOSBanner} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted-c)", padding: "0 4px" }}>✕</button>
+          </div>
+          <div style={{ fontSize: 13, color: "var(--text-c)", lineHeight: 1.6, background: C.primaryPale, borderRadius: 10, padding: "10px 14px" }}>
+            1. Appuie sur le bouton <strong>Partager</strong> <span style={{ fontSize: 16 }}>⎙</span> en bas de Safari<br />
+            2. Fais défiler et choisis <strong>"Sur l'écran d'accueil"</strong><br />
+            3. Appuie sur <strong>Ajouter</strong> — c'est tout !
+          </div>
+        </div>
+      )}
+
       {showOnboarding && entries.length === 0 && (
         <Onboarding
           onStart={() => setShowOnboarding(false)}
