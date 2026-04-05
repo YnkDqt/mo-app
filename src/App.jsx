@@ -170,27 +170,115 @@ function optColor(opts, val) {
   return opts.find(o => o.value === val)?.color || C.muted;
 }
 
-// Algorithme symptothermie : détection ovulation via règle des 3 températures
-function detectOvulation(entries) {
-  const temps = entries
-    .filter(e => e.temperature && e.temperature > 35)
-    .map(e => ({ day: e.jourDuCycle, temp: e.temperature, date: e.date }));
-  
-  if (temps.length < 6) return null;
-  
-  // Baseline = moyenne des 6 dernières temps basses
-  for (let i = 3; i < temps.length; i++) {
-    const prev = temps.slice(Math.max(0, i - 6), i);
-    if (prev.length < 3) continue;
-    const baseline = Math.max(...prev.map(t => t.temp));
-    const high = temps.slice(i, i + 3);
-    if (high.length < 3) continue;
-    const threshold = baseline + 0.2;
-    if (high.every(t => t.temp > threshold)) {
-      return { day: high[0].day, date: high[0].date, method: "temperature" };
+// ─── ALGORITHME SYMPTOTHERMIQUE ─────────────────────────────────────────────
+// Basé sur la Règle Symptothermique :
+// 1. Jour sommet = dernier jour avant régression de la glaire
+// 2. Températures basses = 6 précédant la hausse (max 1 perturbation)
+// 3. Trait bas = plus haute des 6 températures basses
+// 4. Trait haut = trait bas + 0.2°C
+// 5. 3 températures hautes consécutives après le jour sommet, toutes > trait bas
+// 6. Infertilité : si T3 >= trait haut → ce soir ; sinon → 4e soir
+// Fertilité certaine : dès changement de glaire (sensation ou apparence)
+// Infertilité précoce : 6 premiers jours si cycles >= 26j et jours secs
+
+function analyserCycle(entries) {
+  const sorted = [...entries].sort((a, b) => a.jourDuCycle - b.jourDuCycle);
+
+  // ── Jour sommet glaire ──
+  // Dernier jour avant régression : dernier jour avec glaire fertile OU humide avant retour au sec
+  let jourSommet = null;
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const e = sorted[i];
+    const hasGlaireHaute = e.glaireSensation === "lubrifiee" || e.glaireSensation === "humide" || e.glaireApparence === "fertile";
+    if (hasGlaireHaute) {
+      jourSommet = e.jourDuCycle;
+      break;
     }
   }
-  return null;
+
+  // ── Début fertilité glaire ──
+  // Premier jour où glaire change (humide ou fertile)
+  let jourDebutFertiliteGlaire = null;
+  for (const e of sorted) {
+    if (e.glaireSensation === "lubrifiee" || e.glaireSensation === "humide" || e.glaireApparence === "fertile" || e.glaireApparence === "pateuse") {
+      jourDebutFertiliteGlaire = e.jourDuCycle;
+      break;
+    }
+  }
+
+  // ── Analyse thermique ──
+  const tempsValides = sorted.filter(e => e.temperature && e.temperature > 35);
+  if (tempsValides.length < 6) {
+    return {
+      jourSommet, jourDebutFertiliteGlaire,
+      traitBas: null, traitHaut: null,
+      jourOvulation: null, jourDebutInfertilite: null,
+      methode: null, confiance: "insuffisant",
+    };
+  }
+
+  // Chercher la montée thermique : trouver le point où 3 T° consécutives dépassent les 6 précédentes
+  let traitBas = null, traitHaut = null, jourOvulation = null, jourDebutInfertilite = null;
+
+  for (let i = 3; i < tempsValides.length; i++) {
+    // Les 6 précédentes (ou moins si début de cycle), en excluant max 1 perturbation
+    const prevAll = tempsValides.slice(Math.max(0, i - 6), i);
+    if (prevAll.length < 3) continue;
+
+    // Baseline = plus haute des températures basses (max 1 perturbation = exclure la plus haute si elle est isolée)
+    const prevSorted = [...prevAll].sort((a, b) => b.temp - a.temp);
+    const candidatBas = prevSorted.length >= 2 ? prevSorted[1].temp : prevSorted[0].temp; // Tolérance 1 perturbation
+    const baseline = Math.max(...prevAll.map(t => t.temp));
+    // On utilise le max des températures basses comme trait bas
+    const tb = baseline;
+    const th = Math.round((tb + 0.2) * 100) / 100;
+
+    // 3 T° hautes consécutives après ce point, toutes > trait bas
+    const next3 = tempsValides.slice(i, i + 3);
+    if (next3.length < 3) continue;
+    if (!next3.every(t => t.temp > tb)) continue;
+
+    // Vérifier cohérence avec le jour sommet si disponible
+    // Les 3 T° hautes doivent être après ou au jour sommet
+    if (jourSommet && next3[0].day < jourSommet) continue;
+
+    traitBas = tb;
+    traitHaut = th;
+    jourOvulation = jourSommet || next3[0].day; // Ovulation = jour sommet si connu
+
+    // Déterminer le début de l'infertilité
+    const t3 = next3[2].temp;
+    if (t3 >= th) {
+      // 3e T° haute >= trait haut → infertilité ce soir-là (J du 3e point)
+      jourDebutInfertilite = next3[2].day;
+    } else {
+      // 3e T° haute < trait haut → infertilité 4e soir
+      jourDebutInfertilite = next3[2].day + 1;
+    }
+    break;
+  }
+
+  // Infertilité précoce : 6 premiers jours secs (si cycle >= 26j et données disponibles)
+  const cycleLen = sorted.length;
+  const infertilitePrecoce = cycleLen >= 26 ? 6 : null;
+
+  return {
+    jourSommet,
+    jourDebutFertiliteGlaire,
+    traitBas,
+    traitHaut,
+    jourOvulation,
+    jourDebutInfertilite,
+    infertilitePrecoce,
+    confiance: jourOvulation ? (jourSommet && traitBas ? "double" : "temperature") : "insuffisant",
+  };
+}
+
+// Fonction de compatibilité avec l'existant
+function detectOvulation(entries) {
+  const res = analyserCycle(entries);
+  if (!res.jourOvulation) return null;
+  return { day: res.jourOvulation, date: null, method: res.confiance };
 }
 
 // Calcul proba ovulation pour chaque jour du cycle basé sur historique
@@ -1065,6 +1153,18 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
 function Historique({ entries, cycles, isMobile }) {
   const [selectedCycle, setSelectedCycle] = useState(null);
   const [search, setSearch] = useState("");
+  // Ajustements manuels par cycle : { [cycleNum]: { jourSommet, jourDebutInfertilite } }
+  const [adjustments, setAdjustments] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("mo_adjustments") || "{}"); } catch { return {}; }
+  });
+
+  const saveAdjustment = (cycleNum, key, value) => {
+    setAdjustments(prev => {
+      const next = { ...prev, [cycleNum]: { ...(prev[cycleNum] || {}), [key]: value } };
+      localStorage.setItem("mo_adjustments", JSON.stringify(next));
+      return next;
+    });
+  };
 
   const cycleGroups = useMemo(() => {
     const groups = {};
@@ -1093,9 +1193,15 @@ function Historique({ entries, cycles, isMobile }) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {sortedCycles.map(c => {
-          const ents = (cycleGroups[c.cycleNum] || []).sort((a, b) => a.date.localeCompare(b.date));
-          const cvOv = detectOvulation(ents);
+          const ents = (cycleGroups[c.cycleNum] || []).sort((a, b) => a.jourDuCycle - b.jourDuCycle);
           const open = selectedCycle === c.cycleNum;
+
+          // Analyse symptothermique
+          const analyse = analyserCycle(ents);
+          const adj = adjustments[c.cycleNum] || {};
+          const jourSommet = adj.jourSommet ?? analyse.jourSommet;
+          const jourInfertilite = adj.jourDebutInfertilite ?? analyse.jourDebutInfertilite;
+          const jourFertilite = analyse.jourDebutFertiliteGlaire;
 
           const filteredEnts = search
             ? ents.filter(e =>
@@ -1107,11 +1213,19 @@ function Historique({ entries, cycles, isMobile }) {
 
           const tempData = ents
             .filter(e => e.temperature && e.jourDuCycle)
-            .map(e => ({ jour: e.jourDuCycle, temp: e.temperature }));
+            .map(e => ({
+              jour: e.jourDuCycle,
+              temp: e.temperature,
+              fertile: (e.glaireSensation === "lubrifiee" || e.glaireSensation === "humide" || e.glaireApparence === "fertile") ? e.temperature : null,
+            }));
+
+          // Label confiance
+          const confianceLabel = { double: "Double confirmation ✓✓", temperature: "Temp. seule", insuffisant: "Données insuffisantes" };
+          const confianceColor = { double: C.sage, temperature: C.yellow, insuffisant: C.muted };
 
           return (
             <div key={c.cycleNum} style={{ borderRadius: 16, border: `1px solid ${open ? C.primary + "50" : "var(--border-c)"}`, overflow: "hidden", transition: "border-color .2s" }}>
-              {/* En-tête cliquable */}
+              {/* En-tête */}
               <div onClick={() => toggle(c.cycleNum)} style={{
                 padding: "14px 18px", cursor: "pointer",
                 background: open ? C.primaryPale : "var(--surface)",
@@ -1122,9 +1236,10 @@ function Historique({ entries, cycles, isMobile }) {
                   <div style={{ fontFamily: "Cormorant Garamond", fontSize: 18, fontWeight: 600, color: open ? C.primaryDeep : "var(--text-c)" }}>
                     Cycle {c.cycleNum}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 2 }}>
-                    {fmt(c.dateDebut)} → {fmt(c.dateFin)}
-                    {cvOv ? <span style={{ marginLeft: 8, color: C.sage }}>· Ov. J{cvOv.day}</span> : null}
+                  <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    <span>{fmt(c.dateDebut)} → {fmt(c.dateFin)}</span>
+                    {jourSommet && <span style={{ color: C.sage }}>· J.sommet J{jourSommet}</span>}
+                    {jourInfertilite && <span style={{ color: C.lavender }}>· Infertile J{jourInfertilite}</span>}
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -1136,31 +1251,112 @@ function Historique({ entries, cycles, isMobile }) {
               {/* Contenu déplié */}
               {open && (
                 <div style={{ borderTop: `1px solid var(--border-c)`, background: "var(--surface)" }}>
-                  {/* Graphique température */}
-                  {tempData.length > 0 && (
-                    <div style={{ padding: "16px 18px 0" }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".05em" }}>
-                        Courbe de température
-                        {cvOv && <span style={{ marginLeft: 8, color: C.sage, fontWeight: 400, textTransform: "none" }}>Ovulation J{cvOv.day}</span>}
+
+                  {/* ── Analyse symptothermique ── */}
+                  <div style={{ padding: "16px 18px 0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", textTransform: "uppercase", letterSpacing: ".05em" }}>
+                        Analyse symptothermique
                       </div>
-                      <ResponsiveContainer width="100%" height={140}>
+                      {analyse.confiance && (
+                        <span style={{ fontSize: 11, color: confianceColor[analyse.confiance], background: confianceColor[analyse.confiance] + "20", padding: "2px 8px", borderRadius: 99 }}>
+                          {confianceLabel[analyse.confiance]}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Zones de fertilité */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+                      {analyse.infertilitePrecoce && (
+                        <div style={{ padding: "6px 12px", borderRadius: 10, background: C.lavenderPale, border: `1px solid ${C.lavender}40`, fontSize: 12 }}>
+                          <span style={{ color: C.lavender, fontWeight: 600 }}>Infertile J1-J{analyse.infertilitePrecoce}</span>
+                          <span style={{ color: "var(--muted-c)", marginLeft: 4 }}>premiers jours secs</span>
+                        </div>
+                      )}
+                      {jourFertilite && (
+                        <div style={{ padding: "6px 12px", borderRadius: 10, background: C.yellowPale, border: `1px solid ${C.yellow}40`, fontSize: 12 }}>
+                          <span style={{ color: C.yellow, fontWeight: 600 }}>Fertile dès J{jourFertilite}</span>
+                          <span style={{ color: "var(--muted-c)", marginLeft: 4 }}>changement glaire</span>
+                        </div>
+                      )}
+                      {jourInfertilite && (
+                        <div style={{ padding: "6px 12px", borderRadius: 10, background: C.sagePale, border: `1px solid ${C.sage}40`, fontSize: 12 }}>
+                          <span style={{ color: C.sage, fontWeight: 600 }}>Infertile dès J{jourInfertilite}</span>
+                          <span style={{ color: "var(--muted-c)", marginLeft: 4 }}>{analyse.traitHaut ? `3e T° ${analyse.confiance === "double" ? "≥" : "<"} ${analyse.traitHaut}°` : "thermique"}</span>
+                        </div>
+                      )}
+                      {analyse.traitBas && (
+                        <div style={{ padding: "6px 12px", borderRadius: 10, background: "var(--surface-2)", border: `1px solid var(--border-c)`, fontSize: 12, color: "var(--muted-c)" }}>
+                          Trait bas <strong>{analyse.traitBas}°</strong> · Trait haut <strong>{analyse.traitHaut}°</strong>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Graphique température avec traits */}
+                    {tempData.length > 0 && (
+                      <ResponsiveContainer width="100%" height={160}>
                         <LineChart data={tempData} margin={{ top: 4, right: 8, bottom: 0, left: -22 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--border-c)" />
                           <XAxis dataKey="jour" tick={{ fontSize: 10 }} />
-                          <YAxis domain={["dataMin - 0.1", "dataMax + 0.1"]} tick={{ fontSize: 10 }} />
+                          <YAxis domain={["dataMin - 0.15", "dataMax + 0.15"]} tick={{ fontSize: 10 }} />
                           <Tooltip contentStyle={{ background: "var(--surface)", border: `1px solid var(--border-c)`, borderRadius: 10, fontSize: 12 }}
-                            formatter={(v) => [`${v}°C`, "Temp."]} />
-                          {cvOv && <ReferenceLine x={cvOv.day} stroke={C.sage} strokeDasharray="4 2" />}
-                          <Line type="monotone" dataKey="temp" stroke={C.primary} strokeWidth={2} dot={{ r: 2 }} connectNulls={false} />
+                            formatter={(v, n) => n === "temp" ? [`${v}°C`, "Température"] : [`${v}°C`, "Fertile"]} />
+                          {/* Trait bas */}
+                          {analyse.traitBas && <ReferenceLine y={analyse.traitBas} stroke={C.primary} strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `TB ${analyse.traitBas}°`, fill: C.primary, fontSize: 9, position: "right" }} />}
+                          {/* Trait haut */}
+                          {analyse.traitHaut && <ReferenceLine y={analyse.traitHaut} stroke={C.sage} strokeDasharray="6 3" strokeWidth={1.5} label={{ value: `TH ${analyse.traitHaut}°`, fill: C.sage, fontSize: 9, position: "right" }} />}
+                          {/* Jour sommet */}
+                          {jourSommet && <ReferenceLine x={jourSommet} stroke={C.yellow} strokeWidth={2} label={{ value: `S`, fill: C.yellow, fontSize: 10, position: "top" }} />}
+                          {/* Début infertilité */}
+                          {jourInfertilite && <ReferenceLine x={jourInfertilite} stroke={C.sage} strokeWidth={2} label={{ value: `I`, fill: C.sage, fontSize: 10, position: "top" }} />}
+                          {/* Début fertilité */}
+                          {jourFertilite && <ReferenceLine x={jourFertilite} stroke={C.yellow} strokeDasharray="4 2" strokeWidth={1.5} label={{ value: `F`, fill: C.yellow, fontSize: 10, position: "top" }} />}
+                          <Line type="monotone" dataKey="temp" stroke={C.primary} strokeWidth={2} dot={{ r: 3, fill: C.primary }} connectNulls={false} />
+                          <Line type="monotone" dataKey="fertile" stroke={C.sage} strokeWidth={0} dot={{ r: 5, fill: C.sage }} connectNulls={false} />
                         </LineChart>
                       </ResponsiveContainer>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Barre de recherche + export */}
+                    {/* Légende */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8, marginBottom: 4, fontSize: 11, color: "var(--muted-c)" }}>
+                      <span><span style={{ color: C.primary }}>─</span> Trait bas (TB)</span>
+                      <span><span style={{ color: C.sage }}>─</span> Trait haut (TB+0.2°)</span>
+                      <span><span style={{ color: C.yellow }}>│</span> S = Jour sommet</span>
+                      <span><span style={{ color: C.sage }}>│</span> I = Début infertilité</span>
+                      <span><span style={{ color: C.sage, fontSize: 8 }}>●</span> Glaire fertile</span>
+                    </div>
+                  </div>
+
+                  {/* ── Ajustement manuel ── */}
+                  <div style={{ padding: "12px 18px", borderTop: `1px solid var(--border-c)`, borderBottom: `1px solid var(--border-c)` }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 10, textTransform: "uppercase", letterSpacing: ".05em" }}>
+                      Ajustement manuel
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <label style={{ fontSize: 12, color: "var(--muted-c)", whiteSpace: "nowrap" }}>Jour sommet (S)</label>
+                        <input type="number" min="1" max="40"
+                          value={jourSommet || ""}
+                          onChange={e => saveAdjustment(c.cycleNum, "jourSommet", e.target.value ? parseInt(e.target.value) : null)}
+                          style={{ width: 64, textAlign: "center", padding: "5px 8px" }}
+                          placeholder="auto" />
+                        {adj.jourSommet && <button onClick={() => saveAdjustment(c.cycleNum, "jourSommet", null)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: 13 }}>✕</button>}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <label style={{ fontSize: 12, color: "var(--muted-c)", whiteSpace: "nowrap" }}>Début infertilité (I)</label>
+                        <input type="number" min="1" max="45"
+                          value={jourInfertilite || ""}
+                          onChange={e => saveAdjustment(c.cycleNum, "jourDebutInfertilite", e.target.value ? parseInt(e.target.value) : null)}
+                          style={{ width: 64, textAlign: "center", padding: "5px 8px" }}
+                          placeholder="auto" />
+                        {adj.jourDebutInfertilite && <button onClick={() => saveAdjustment(c.cycleNum, "jourDebutInfertilite", null)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: 13 }}>✕</button>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Recherche + export ── */}
                   <div style={{ padding: "12px 18px", display: "flex", gap: 10, alignItems: "center" }}>
-                    <input placeholder="Chercher…" value={search} onChange={e => setSearch(e.target.value)}
-                      style={{ flex: 1 }} />
+                    <input placeholder="Chercher…" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1 }} />
                     <Btn variant="ghost" size="sm" onClick={() => {
                       exportCSV(ents, `mo-cycle${c.cycleNum}.csv`, [
                         { label: "Date", key: "date" },
@@ -1177,72 +1373,94 @@ function Historique({ entries, cycles, isMobile }) {
                     }}>⬇ CSV</Btn>
                   </div>
 
-                  {/* Entrées : cartes sur mobile, tableau sur desktop */}
+                  {/* ── Tableau / Cartes ── */}
                   {isMobile ? (
                     <div style={{ borderTop: `1px solid var(--border-c)` }}>
-                      {filteredEnts.map(e => (
-                        <div key={e.id} style={{ padding: "12px 18px", borderBottom: `1px solid var(--border-c)` }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <span style={{ fontFamily: "Cormorant Garamond", fontSize: 20, fontWeight: 600, color: C.primary }}>J{e.jourDuCycle}</span>
-                              <span style={{ fontSize: 13 }}>{fmtShort(e.date)}</span>
+                      {filteredEnts.map(e => {
+                        const isFertile = jourFertilite && jourInfertilite && e.jourDuCycle >= jourFertilite && e.jourDuCycle < jourInfertilite;
+                        const isInfertile = jourInfertilite && e.jourDuCycle >= jourInfertilite;
+                        const isPrecoce = analyse.infertilitePrecoce && e.jourDuCycle <= analyse.infertilitePrecoce && !jourFertilite;
+                        return (
+                          <div key={e.id} style={{
+                            padding: "12px 18px", borderBottom: `1px solid var(--border-c)`,
+                            borderLeft: `3px solid ${isFertile ? C.yellow : isInfertile || isPrecoce ? C.sage : "transparent"}`,
+                          }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <span style={{ fontFamily: "Cormorant Garamond", fontSize: 20, fontWeight: 600, color: C.primary }}>J{e.jourDuCycle}</span>
+                                <span style={{ fontSize: 13 }}>{fmtShort(e.date)}</span>
+                                {e.jourDuCycle === jourSommet && <span style={{ fontSize: 10, background: C.yellowPale, color: C.yellow, padding: "1px 6px", borderRadius: 99, fontWeight: 600 }}>Sommet</span>}
+                                {e.jourDuCycle === jourInfertilite && <span style={{ fontSize: 10, background: C.sagePale, color: C.sage, padding: "1px 6px", borderRadius: 99, fontWeight: 600 }}>Infertile</span>}
+                              </div>
+                              {e.temperature && <span style={{ fontFamily: "Cormorant Garamond", fontSize: 17, fontWeight: 600, color: analyse.traitBas && e.temperature > analyse.traitBas ? C.sage : C.primaryDeep }}>{e.temperature}°</span>}
                             </div>
-                            {e.temperature && (
-                              <span style={{ fontFamily: "Cormorant Garamond", fontSize: 17, fontWeight: 600, color: C.primaryDeep }}>{e.temperature}°</span>
-                            )}
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                              {e.saignement      && <ValBadge opts={SAIGNEMENT_OPTS} val={e.saignement} />}
+                              {e.glaireSensation && <ValBadge opts={SENSATION_OPTS}  val={e.glaireSensation} />}
+                              {e.glaireApparence && <ValBadge opts={APPARENCE_OPTS}  val={e.glaireApparence} />}
+                              {e.colFermete      && <ValBadge opts={FERMETE_OPTS}    val={e.colFermete} />}
+                              {e.colOuverture    && <ValBadge opts={OUVERTURE_OPTS}  val={e.colOuverture} />}
+                              {e.rapport         && <ValBadge opts={RAPPORT_OPTS}    val={e.rapport} />}
+                            </div>
+                            {e.perturbation && <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 5, fontStyle: "italic" }}>{e.perturbation}</div>}
                           </div>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                            {e.saignement      && <ValBadge opts={SAIGNEMENT_OPTS} val={e.saignement} />}
-                            {e.glaireSensation && <ValBadge opts={SENSATION_OPTS}  val={e.glaireSensation} />}
-                            {e.glaireApparence && <ValBadge opts={APPARENCE_OPTS}  val={e.glaireApparence} />}
-                            {e.colFermete      && <ValBadge opts={FERMETE_OPTS}    val={e.colFermete} />}
-                            {e.colOuverture    && <ValBadge opts={OUVERTURE_OPTS}  val={e.colOuverture} />}
-                            {e.rapport         && <ValBadge opts={RAPPORT_OPTS}    val={e.rapport} />}
-                          </div>
-                          {e.perturbation && (
-                            <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 5, fontStyle: "italic" }}>{e.perturbation}</div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="tbl-wrap">
                       <table>
                         <thead>
                           <tr>
-                            <th>J</th><th>Date</th><th>T°</th><th>Saign.</th>
+                            <th>J</th><th>Date</th><th>T°</th><th>Phase</th><th>Saign.</th>
                             <th>Glaire</th><th>Col</th><th>Rapport</th><th>Note</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredEnts.map(e => (
-                            <tr key={e.id} style={{ cursor: "default" }}>
-                              <td style={{ fontWeight: 600, color: C.primary, fontFamily: "Cormorant Garamond", fontSize: 15 }}>{e.jourDuCycle}</td>
-                              <td style={{ fontSize: 12, whiteSpace: "nowrap" }}>{fmtShort(e.date)}</td>
-                              <td style={{ fontFamily: "Cormorant Garamond", fontSize: 15, fontWeight: 500 }}>{e.temperature ? `${e.temperature}°` : "—"}</td>
-                              <td><ValBadge opts={SAIGNEMENT_OPTS} val={e.saignement} /></td>
-                              <td>
-                                {e.glaireSensation || e.glaireApparence ? (
-                                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                                    {e.glaireSensation && <ValBadge opts={SENSATION_OPTS} val={e.glaireSensation} />}
-                                    {e.glaireApparence && <ValBadge opts={APPARENCE_OPTS} val={e.glaireApparence} />}
-                                  </div>
-                                ) : "—"}
-                              </td>
-                              <td>
-                                {e.colFermete || e.colOuverture ? (
-                                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                                    {e.colFermete && <ValBadge opts={FERMETE_OPTS} val={e.colFermete} />}
-                                    {e.colOuverture && <ValBadge opts={OUVERTURE_OPTS} val={e.colOuverture} />}
-                                  </div>
-                                ) : "—"}
-                              </td>
-                              <td><ValBadge opts={RAPPORT_OPTS} val={e.rapport} /></td>
-                              <td style={{ fontSize: 12, color: "var(--muted-c)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                {e.perturbation || "—"}
-                              </td>
-                            </tr>
-                          ))}
+                          {filteredEnts.map(e => {
+                            const isFertile = jourFertilite && jourInfertilite && e.jourDuCycle >= jourFertilite && e.jourDuCycle < jourInfertilite;
+                            const isInfertile = jourInfertilite && e.jourDuCycle >= jourInfertilite;
+                            const isPrecoce = analyse.infertilitePrecoce && e.jourDuCycle <= analyse.infertilitePrecoce && !jourFertilite;
+                            const isHaute = analyse.traitBas && e.temperature && e.temperature > analyse.traitBas;
+                            return (
+                              <tr key={e.id} style={{ cursor: "default", borderLeft: `3px solid ${isFertile ? C.yellow : isInfertile || isPrecoce ? C.sage : "transparent"}` }}>
+                                <td style={{ fontWeight: 600, color: C.primary, fontFamily: "Cormorant Garamond", fontSize: 15 }}>
+                                  {e.jourDuCycle}
+                                  {e.jourDuCycle === jourSommet && <span style={{ marginLeft: 4, fontSize: 10, color: C.yellow }}>S</span>}
+                                </td>
+                                <td style={{ fontSize: 12, whiteSpace: "nowrap" }}>{fmtShort(e.date)}</td>
+                                <td style={{ fontFamily: "Cormorant Garamond", fontSize: 15, fontWeight: 500, color: isHaute ? C.sage : "var(--text-c)" }}>
+                                  {e.temperature ? `${e.temperature}°` : "—"}
+                                </td>
+                                <td style={{ fontSize: 11 }}>
+                                  {isFertile ? <span style={{ color: C.yellow, fontWeight: 600 }}>Fertile</span>
+                                  : (isInfertile || isPrecoce) ? <span style={{ color: C.sage, fontWeight: 600 }}>Infertile</span>
+                                  : <span style={{ color: "var(--muted-c)" }}>—</span>}
+                                </td>
+                                <td><ValBadge opts={SAIGNEMENT_OPTS} val={e.saignement} /></td>
+                                <td>
+                                  {e.glaireSensation || e.glaireApparence ? (
+                                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                      {e.glaireSensation && <ValBadge opts={SENSATION_OPTS} val={e.glaireSensation} />}
+                                      {e.glaireApparence && <ValBadge opts={APPARENCE_OPTS} val={e.glaireApparence} />}
+                                    </div>
+                                  ) : "—"}
+                                </td>
+                                <td>
+                                  {e.colFermete || e.colOuverture ? (
+                                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                      {e.colFermete && <ValBadge opts={FERMETE_OPTS} val={e.colFermete} />}
+                                      {e.colOuverture && <ValBadge opts={OUVERTURE_OPTS} val={e.colOuverture} />}
+                                    </div>
+                                  ) : "—"}
+                                </td>
+                                <td><ValBadge opts={RAPPORT_OPTS} val={e.rapport} /></td>
+                                <td style={{ fontSize: 12, color: "var(--muted-c)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {e.perturbation || "—"}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
