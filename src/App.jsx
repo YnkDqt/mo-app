@@ -1579,8 +1579,11 @@ function Onboarding({ onStart, onLoadData, onSettings }) {
         background: "var(--surface)", borderRadius: 24, padding: "40px 36px", maxWidth: 460, width: "100%",
         boxShadow: "0 32px 80px rgba(0,0,0,.22)"
       }}>
-        <div style={{ fontFamily: "Cormorant Garamond", fontSize: 42, fontWeight: 600, color: C.primary, marginBottom: 4 }}>Mo</div>
-        <div style={{ fontSize: 16, color: "var(--muted-c)", marginBottom: 28 }}>Suivi de cycle · Symptothermie</div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 24 }}>
+          <img src="/logo.png" alt="Mo" style={{ width: 96, height: 96, display: "block", marginBottom: 8 }} />
+          <div style={{ fontFamily: "Cormorant Garamond", fontSize: 28, fontWeight: 600, color: C.primaryDeep }}>Mo</div>
+          <div style={{ fontSize: 14, color: "var(--muted-c)" }}>Suivi de cycle · Symptothermie</div>
+        </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
           {[
             "Courbe de température basale",
@@ -1803,10 +1806,13 @@ export default function App() {
       padding: "32px 16px 24px", borderRight: "1px solid var(--border-c)", height: "100vh",
       position: "sticky", top: 0, overflow: "auto", background: "var(--surface)",
     }}>
-      <div style={{ padding: "0 8px 28px" }}>
-        <div style={{ fontFamily: "Cormorant Garamond", fontSize: 36, fontWeight: 600, color: C.primary, lineHeight: 1 }}>Mo</div>
-        <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 3 }}>
-          {settings.prenom ? `Bonjour, ${settings.prenom}` : "Suivi de cycle"}
+      <div style={{ padding: "0 8px 28px", display: "flex", alignItems: "center", gap: 12 }}>
+        <img src="/logo.png" alt="Mo" style={{ width: 52, height: 52, display: "block" }} />
+        <div>
+          <div style={{ fontFamily: "Cormorant Garamond", fontSize: 22, fontWeight: 600, color: C.primaryDeep, lineHeight: 1 }}>Mo</div>
+          <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 3 }}>
+            {settings.prenom ? `Bonjour, ${settings.prenom}` : "Suivi de cycle"}
+          </div>
         </div>
       </div>
       <nav style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
@@ -1863,7 +1869,7 @@ export default function App() {
       display: "flex", alignItems: "center", justifyContent: "space-between",
       padding: "0 18px", zIndex: 100,
     }}>
-      <div style={{ fontFamily: "Cormorant Garamond", fontSize: 28, fontWeight: 600, color: C.primary }}>Mo</div>
+      <img src="/logo.png" alt="Mo" style={{ width: 36, height: 36, display: "block" }} />
       <div style={{ fontSize: 13, fontWeight: 500 }}>{NAVS.find(n => n.id === view)?.label}</div>
       <button onClick={() => setDrawerOpen(true)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-c)" }}>☰</button>
     </div>
@@ -1882,7 +1888,7 @@ export default function App() {
         transition: "transform .25s ease", boxShadow: "4px 0 24px rgba(0,0,0,.12)",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28, padding: "0 8px" }}>
-          <div style={{ fontFamily: "Cormorant Garamond", fontSize: 30, fontWeight: 600, color: C.primary }}>Mo</div>
+          <img src="/logo.png" alt="Mo" style={{ width: 44, height: 44, display: "block" }} />
           <button onClick={() => setDrawerOpen(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted-c)" }}>✕</button>
         </div>
         <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
