@@ -39,6 +39,8 @@ const SAIGNEMENT_OPTS = [
   { value: "normal",   label: "Normal",   color: C.primary },
   { value: "abondant", label: "Abondant", color: C.red },
 ];
+// Options affichées dans le formulaire de saisie (sans "Aucun")
+const SAIGNEMENT_FORM_OPTS = SAIGNEMENT_OPTS.filter(o => o.value !== "aucun");
 const SENSATION_OPTS = [
   { value: "seche",      label: "Sèche",      color: C.yellow },
   { value: "humide",     label: "Humide",     color: C.primary },
@@ -296,6 +298,23 @@ function computeOvulationStats(historicalCycles) {
 
 function gaussianProb(x, mean, std) {
   return Math.exp(-0.5 * ((x - mean) / std) ** 2) / (std * Math.sqrt(2 * Math.PI));
+}
+
+// Calcule un domaine d'axe Y propre pour les températures :
+// arrondi au 0.1, min 36.5, ticks tous les 0.1
+function tempAxisProps(data) {
+  const temps = data.map(d => d.temp).filter(t => t && t > 0);
+  if (temps.length === 0) {
+    return { domain: [36.5, 37.5], ticks: [36.5, 36.6, 36.7, 36.8, 36.9, 37.0, 37.1, 37.2, 37.3, 37.4, 37.5] };
+  }
+  const min = Math.min(...temps);
+  const max = Math.max(...temps);
+  // Arrondi au 0.1 inférieur/supérieur avec marge
+  const lo = Math.min(36.5, Math.floor((min - 0.1) * 10) / 10);
+  const hi = Math.max(lo + 0.5, Math.ceil((max + 0.1) * 10) / 10);
+  const ticks = [];
+  for (let v = lo; v <= hi + 0.0001; v = Math.round((v + 0.1) * 10) / 10) ticks.push(Math.round(v * 10) / 10);
+  return { domain: [lo, hi], ticks };
 }
 
 function exportCSV(data, filename, columns) {
@@ -642,16 +661,13 @@ function EntryModal({ open, onClose, onSave, editEntry, cycleNum }) {
             <input type="number" step="0.01" min="35" max="39" placeholder="ex: 36.80"
               value={form.temperature} onChange={e => upd("temperature", e.target.value ? parseFloat(e.target.value) : "")} />
           </Field>
-          <Field label="Heure de prise">
-            <input type="text" placeholder="ex: 7h00" value={form.heure} onChange={e => upd("heure", e.target.value)} />
-          </Field>
         </div>
 
         <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
             Saignements
           </div>
-          <PillSelect opts={SAIGNEMENT_OPTS} value={form.saignement} onChange={v => upd("saignement", v)} nullable />
+          <PillSelect opts={SAIGNEMENT_FORM_OPTS} value={form.saignement} onChange={v => upd("saignement", v)} nullable />
         </div>
 
         <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
@@ -840,7 +856,7 @@ function Dashboard({ entries, cycles, settings }) {
             <LineChart data={tempData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-c)" />
               <XAxis dataKey="jour" tick={{ fontSize: 11 }} />
-              <YAxis domain={["dataMin - 0.1", "dataMax + 0.1"]} tick={{ fontSize: 11 }} />
+              <YAxis {...tempAxisProps(tempData)} tick={{ fontSize: 11 }} tickFormatter={v => v.toFixed(1)} />
               <Tooltip
                 contentStyle={{ background: "var(--surface)", border: `1px solid var(--border-c)`, borderRadius: 10, fontSize: 12 }}
                 formatter={(v) => [`${v}°C`, "Température"]}
@@ -975,7 +991,7 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
                 <LineChart data={tempData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-c)" />
                   <XAxis dataKey="jour" tick={{ fontSize: 11 }} />
-                  <YAxis domain={["dataMin - 0.1", "dataMax + 0.1"]} tick={{ fontSize: 11 }} />
+                  <YAxis {...tempAxisProps(tempData)} tick={{ fontSize: 11 }} tickFormatter={v => v.toFixed(1)} />
                   <Tooltip contentStyle={{ background: "var(--surface)", border: `1px solid var(--border-c)`, borderRadius: 10, fontSize: 12 }}
                     formatter={(v, n) => n === "temp" ? [`${v}°C`, "Température"] : [`${v}°C`, "Fertile"]} />
                   <Line type="monotone" dataKey="temp" stroke={C.primary} strokeWidth={2} dot={{ r: 3, fill: C.primary }} connectNulls={false} />
@@ -1150,9 +1166,10 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
 }
 
 // ─── HISTORIQUE ──────────────────────────────────────────────────────────────
-function Historique({ entries, cycles, isMobile }) {
+function Historique({ entries, cycles, isMobile, onDeleteCycle }) {
   const [selectedCycle, setSelectedCycle] = useState(null);
   const [search, setSearch] = useState("");
+  const [confirmDeleteCycle, setConfirmDeleteCycle] = useState(null);
   // Ajustements manuels par cycle : { [cycleNum]: { jourSommet, jourDebutInfertilite } }
   const [adjustments, setAdjustments] = useState(() => {
     try { return JSON.parse(localStorage.getItem("mo_adjustments") || "{}"); } catch { return {}; }
@@ -1298,7 +1315,7 @@ function Historique({ entries, cycles, isMobile }) {
                         <LineChart data={tempData} margin={{ top: 4, right: 8, bottom: 0, left: -22 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="var(--border-c)" />
                           <XAxis dataKey="jour" tick={{ fontSize: 10 }} />
-                          <YAxis domain={["dataMin - 0.15", "dataMax + 0.15"]} tick={{ fontSize: 10 }} />
+                          <YAxis {...tempAxisProps(tempData)} tick={{ fontSize: 10 }} tickFormatter={v => v.toFixed(1)} />
                           <Tooltip contentStyle={{ background: "var(--surface)", border: `1px solid var(--border-c)`, borderRadius: 10, fontSize: 12 }}
                             formatter={(v, n) => n === "temp" ? [`${v}°C`, "Température"] : [`${v}°C`, "Fertile"]} />
                           {/* Trait bas */}
@@ -1354,9 +1371,9 @@ function Historique({ entries, cycles, isMobile }) {
                     </div>
                   </div>
 
-                  {/* ── Recherche + export ── */}
-                  <div style={{ padding: "12px 18px", display: "flex", gap: 10, alignItems: "center" }}>
-                    <input placeholder="Chercher…" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1 }} />
+                  {/* ── Recherche + actions ── */}
+                  <div style={{ padding: "12px 18px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <input placeholder="Chercher…" value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, minWidth: 140 }} />
                     <Btn variant="ghost" size="sm" onClick={() => {
                       exportCSV(ents, `mo-cycle${c.cycleNum}.csv`, [
                         { label: "Date", key: "date" },
@@ -1371,6 +1388,7 @@ function Historique({ entries, cycles, isMobile }) {
                         { label: "Perturbation", key: "perturbation" },
                       ]);
                     }}>⬇ CSV</Btn>
+                    <Btn variant="danger" size="sm" onClick={() => setConfirmDeleteCycle(c.cycleNum)}>🗑 Supprimer</Btn>
                   </div>
 
                   {/* ── Tableau / Cartes ── */}
@@ -1459,7 +1477,7 @@ function Historique({ entries, cycles, isMobile }) {
                                   {e.perturbation || "—"}
                                 </td>
                               </tr>
-                            );
+                          );
                           })}
                         </tbody>
                       </table>
@@ -1471,6 +1489,12 @@ function Historique({ entries, cycles, isMobile }) {
           );
         })}
       </div>
+      <ConfirmDialog
+        open={confirmDeleteCycle !== null}
+        message={`Supprimer le cycle ${confirmDeleteCycle} et toutes ses entrées ? Cette action est irréversible.`}
+        onConfirm={() => { onDeleteCycle(confirmDeleteCycle); setConfirmDeleteCycle(null); setSelectedCycle(null); }}
+        onCancel={() => setConfirmDeleteCycle(null)}
+      />
     </div>
   );
 }
@@ -1644,30 +1668,66 @@ export default function App() {
     [entries]
   );
 
-  const handleAdd = useCallback((entry) => {
-    const cycleNum = currentCycleNum;
-    const cycleEntries = entries.filter(e => e.cycleNum === cycleNum).sort((a, b) => a.date.localeCompare(b.date));
-    const startDate = cycleEntries[0]?.date || entry.date;
-    const dayNum = Math.floor((new Date(entry.date) - new Date(startDate)) / 86400000) + 1;
-    const newEntry = { ...entry, cycleNum, jourDuCycle: dayNum };
-    setEntries(prev => [...prev.filter(e => e.id !== newEntry.id), newEntry]);
-
-    // Update cycle bounds
-    setCycles(prev => {
-      const existing = prev.find(c => c.cycleNum === cycleNum);
-      const allDates = [...cycleEntries.map(e => e.date), entry.date].sort();
-      const updated = { cycleNum, dateDebut: allDates[0], dateFin: allDates[allDates.length - 1], nbJours: allDates.length };
-      if (existing) return prev.map(c => c.cycleNum === cycleNum ? updated : c);
-      return [...prev, updated];
+  // Recalcule jourDuCycle pour toutes les entrées d'un cycle + met à jour les bornes
+  const recomputeCycle = useCallback((allEntries, cycleNum) => {
+    const cycleEnts = allEntries.filter(e => e.cycleNum === cycleNum).sort((a, b) => a.date.localeCompare(b.date));
+    if (cycleEnts.length === 0) return { entries: allEntries, cycleInfo: null };
+    const startDate = cycleEnts[0].date;
+    const others = allEntries.filter(e => e.cycleNum !== cycleNum);
+    const updated = cycleEnts.map(e => {
+      const diff = Math.floor((new Date(e.date) - new Date(startDate)) / 86400000) + 1;
+      return { ...e, jourDuCycle: diff };
     });
-  }, [entries, currentCycleNum]);
-
-  const handleEdit = useCallback((entry) => {
-    setEntries(prev => prev.map(e => e.id === entry.id ? entry : e));
+    const dates = cycleEnts.map(e => e.date);
+    const cycleInfo = {
+      cycleNum,
+      dateDebut: dates[0],
+      dateFin: dates[dates.length - 1],
+      nbJours: Math.floor((new Date(dates[dates.length - 1]) - new Date(dates[0])) / 86400000) + 1,
+      nbEntrees: cycleEnts.length,
+    };
+    return { entries: [...others, ...updated], cycleInfo };
   }, []);
 
+  const handleAdd = useCallback((entry) => {
+    const cycleNum = currentCycleNum;
+    const merged = [...entries.filter(e => e.id !== entry.id), { ...entry, cycleNum }];
+    const { entries: recomputed, cycleInfo } = recomputeCycle(merged, cycleNum);
+    setEntries(recomputed);
+    setCycles(prev => {
+      const exists = prev.find(c => c.cycleNum === cycleNum);
+      if (exists) return prev.map(c => c.cycleNum === cycleNum ? { ...c, ...cycleInfo } : c);
+      return [...prev, cycleInfo];
+    });
+  }, [entries, currentCycleNum, recomputeCycle]);
+
+  const handleEdit = useCallback((entry) => {
+    const merged = entries.map(e => e.id === entry.id ? entry : e);
+    const { entries: recomputed, cycleInfo } = recomputeCycle(merged, entry.cycleNum);
+    setEntries(recomputed);
+    if (cycleInfo) {
+      setCycles(prev => prev.map(c => c.cycleNum === entry.cycleNum ? { ...c, ...cycleInfo } : c));
+    }
+  }, [entries, recomputeCycle]);
+
   const handleDelete = useCallback((id) => {
-    setEntries(prev => prev.filter(e => e.id !== id));
+    const toDelete = entries.find(e => e.id === id);
+    if (!toDelete) return;
+    const merged = entries.filter(e => e.id !== id);
+    const { entries: recomputed, cycleInfo } = recomputeCycle(merged, toDelete.cycleNum);
+    setEntries(recomputed);
+    if (cycleInfo) {
+      setCycles(prev => prev.map(c => c.cycleNum === toDelete.cycleNum ? { ...c, ...cycleInfo } : c));
+    } else {
+      // Si plus aucune entrée dans ce cycle, on supprime aussi le cycle
+      setCycles(prev => prev.filter(c => c.cycleNum !== toDelete.cycleNum));
+    }
+  }, [entries, recomputeCycle]);
+
+  // Suppression d'un cycle entier
+  const handleDeleteCycle = useCallback((cycleNum) => {
+    setEntries(prev => prev.filter(e => e.cycleNum !== cycleNum));
+    setCycles(prev => prev.filter(c => c.cycleNum !== cycleNum));
   }, []);
 
   const handleNewCycle = useCallback(() => {
@@ -1907,7 +1967,7 @@ export default function App() {
         <main className={isMobile ? "page-padding" : ""} style={{ flex: 1, padding: isMobile ? "76px 16px 40px" : "44px 52px", maxWidth: isMobile ? undefined : 1100 }}>
           {view === "dashboard"  && <Dashboard entries={entries} cycles={cycles} settings={settings} />}
           {view === "cycle"      && <CycleActuel entries={entries} cycles={cycles} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} currentCycleNum={currentCycleNum} isMobile={isMobile} />}
-          {view === "historique" && <Historique entries={entries} cycles={cycles} isMobile={isMobile} />}
+          {view === "historique" && <Historique entries={entries} cycles={cycles} isMobile={isMobile} onDeleteCycle={handleDeleteCycle} />}
           {view === "params"     && <Parametres settings={settings} onUpdate={setSettings} onNewCycle={handleNewCycle} currentCycleNum={currentCycleNum} />}
         </main>
       </div>
