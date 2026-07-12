@@ -1499,6 +1499,244 @@ function Historique({ entries, cycles, isMobile, onDeleteCycle }) {
   );
 }
 
+// ─── ASSISTANT ───────────────────────────────────────────────────────────────
+// Moteur de prédiction basé sur historique + longueur moyenne + variabilité
+
+function predictCycles(entries, cycles, nbFuturs = 6) {
+  // Longueur moyenne des cycles complets
+  const lengths = cycles
+    .filter(c => c.dateFin && c.dateDebut)
+    .map(c => Math.floor((new Date(c.dateFin) - new Date(c.dateDebut)) / 86400000) + 1);
+  const avgLen = lengths.length ? Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length) : 28;
+  const stdLen = lengths.length > 1
+    ? Math.round(Math.sqrt(lengths.map(l => (l - avgLen) ** 2).reduce((a, b) => a + b, 0) / lengths.length))
+    : 3;
+
+  // Ovulation moyenne (jour dans le cycle)
+  const cycleGroups = {};
+  entries.forEach(e => { (cycleGroups[e.cycleNum] = cycleGroups[e.cycleNum] || []).push(e); });
+  const ovStats = computeOvulationStats(
+    Object.values(cycleGroups).map(ents => ({ entries: ents }))
+  );
+
+  // Dernier cycle démarré
+  const lastCycle = cycles.slice().sort((a, b) => b.cycleNum - a.cycleNum)[0];
+  if (!lastCycle) return null;
+  const lastStart = new Date(lastCycle.dateDebut);
+
+  // Générer les N prochains cycles prévus
+  const predictions = [];
+  for (let i = 0; i < nbFuturs; i++) {
+    const cycleStart = new Date(lastStart.getTime() + i * avgLen * 86400000);
+    const cycleEnd = new Date(cycleStart.getTime() + (avgLen - 1) * 86400000);
+    const ovDay = new Date(cycleStart.getTime() + (Math.round(ovStats.mean) - 1) * 86400000);
+    const fertileStart = new Date(ovDay.getTime() - 5 * 86400000);
+    const fertileEnd = new Date(ovDay.getTime() + 1 * 86400000);
+    // Durée règles typique 4-6 jours
+    const reglesEnd = new Date(cycleStart.getTime() + 4 * 86400000);
+    predictions.push({
+      cycleNum: lastCycle.cycleNum + i,
+      debut: cycleStart,
+      fin: cycleEnd,
+      reglesDebut: cycleStart,
+      reglesFin: reglesEnd,
+      ovulation: ovDay,
+      fertileDebut: fertileStart,
+      fertileFin: fertileEnd,
+    });
+  }
+
+  return { predictions, avgLen, stdLen, ovMean: Math.round(ovStats.mean), ovStd: Math.round(ovStats.std) };
+}
+
+const fmtLong = (d) => d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+const fmtMedium = (d) => d.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+
+// ─── Réponses aux questions ──────────────────────────────────────────────────
+
+function repondrePeriodes(prediction) {
+  if (!prediction) return { text: "Pas encore assez de données pour prédire.", details: [] };
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const futures = prediction.predictions.filter(p => p.reglesFin >= now);
+  return {
+    text: futures.length ? `Tes prochaines périodes de menstruation prévues :` : "Pas de prédiction disponible.",
+    details: futures.slice(0, 4).map(p => ({
+      titre: `Cycle ${p.cycleNum}`,
+      valeur: `${fmtMedium(p.reglesDebut)} → ${fmtMedium(p.reglesFin)}`,
+      sub: `≈ ${Math.ceil((p.reglesDebut - now) / 86400000)} jours`,
+    })),
+    footer: `Basé sur ${prediction.avgLen}j de cycle moyen (±${prediction.stdLen}j)`,
+  };
+}
+
+function repondreOvulation(prediction) {
+  if (!prediction) return { text: "Pas assez de données.", details: [] };
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const futures = prediction.predictions.filter(p => p.ovulation >= now);
+  return {
+    text: `Prochaines ovulations estimées :`,
+    details: futures.slice(0, 3).map(p => ({
+      titre: `Cycle ${p.cycleNum}`,
+      valeur: fmtLong(p.ovulation),
+      sub: `Fenêtre fertile : ${fmtMedium(p.fertileDebut)} → ${fmtMedium(p.fertileFin)}`,
+    })),
+    footer: `Ovulation historique : J${prediction.ovMean} (±${prediction.ovStd}j)`,
+  };
+}
+
+function repondreFertiliteDate(prediction, date) {
+  if (!prediction) return { text: "Pas assez de données.", details: [] };
+  if (!date) return { text: "Choisis une date pour vérifier.", details: [] };
+  const target = new Date(date + "T00:00:00");
+  // Trouver le cycle qui contient cette date
+  for (const p of prediction.predictions) {
+    if (target >= p.debut && target <= p.fin) {
+      const isRegles = target >= p.reglesDebut && target <= p.reglesFin;
+      const isFertile = target >= p.fertileDebut && target <= p.fertileFin;
+      const isOvulation = target.toDateString() === p.ovulation.toDateString();
+      let phase, color, sub;
+      if (isRegles) { phase = "🌹 Menstruation"; color = "red"; sub = "Période de règles"; }
+      else if (isOvulation) { phase = "✨ Ovulation"; color = "sage"; sub = "Jour d'ovulation estimé"; }
+      else if (isFertile) { phase = "🌿 Fenêtre fertile"; color = "sage"; sub = "Période de fertilité"; }
+      else if (target < p.fertileDebut) { phase = "🌱 Phase folliculaire"; color = "yellow"; sub = "Avant l'ovulation"; }
+      else { phase = "🌙 Phase lutéale"; color = "lavender"; sub = "Après l'ovulation, stable"; }
+      const dayInCycle = Math.floor((target - p.debut) / 86400000) + 1;
+      return {
+        text: `Le ${fmtLong(target)} :`,
+        details: [{
+          titre: phase,
+          valeur: `Jour ${dayInCycle} du cycle ${p.cycleNum}`,
+          sub, color,
+        }],
+        footer: null,
+      };
+    }
+  }
+  return { text: `La date ${fmtLong(target)} est trop éloignée pour une prédiction fiable.`, details: [] };
+}
+
+function repondreJoursRestants(prediction, entries, currentCycleNum) {
+  if (!prediction) return { text: "Pas assez de données.", details: [] };
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const currentEnts = entries.filter(e => e.cycleNum === currentCycleNum).sort((a, b) => a.date.localeCompare(b.date));
+  if (!currentEnts.length) return { text: "Aucune entrée pour ce cycle.", details: [] };
+  const debut = new Date(currentEnts[0].date + "T00:00:00");
+  const jourActuel = Math.floor((now - debut) / 86400000) + 1;
+  const prochainDebut = prediction.predictions.find(p => p.debut > now);
+  if (!prochainDebut) return { text: "Pas de prédiction disponible.", details: [] };
+  const joursAvant = Math.ceil((prochainDebut.debut - now) / 86400000);
+  return {
+    text: `Tu es au jour ${jourActuel} de ton cycle actuel.`,
+    details: [{
+      titre: "Prochaines règles estimées",
+      valeur: fmtLong(prochainDebut.debut),
+      sub: joursAvant === 0 ? "Aujourd'hui" : joursAvant === 1 ? "Demain" : `Dans ${joursAvant} jours`,
+    }],
+    footer: null,
+  };
+}
+
+// ─── Composant Assistant ─────────────────────────────────────────────────────
+
+function Assistant({ entries, cycles, currentCycleNum }) {
+  const [question, setQuestion] = useState(null);
+  const [selectedDate, setSelectedDate] = useState("");
+
+  const prediction = useMemo(() => predictCycles(entries, cycles), [entries, cycles]);
+
+  const questions = [
+    { id: "periodes",      icon: "🌹", label: "Quand seront mes prochaines règles ?" },
+    { id: "ovulation",     icon: "✨", label: "Quand seront mes prochaines ovulations ?" },
+    { id: "fertilite",     icon: "🌿", label: "Suis-je fertile à une date précise ?" },
+    { id: "restants",      icon: "⏳", label: "Où en suis-je dans mon cycle actuel ?" },
+  ];
+
+  let reponse = null;
+  if (question === "periodes")  reponse = repondrePeriodes(prediction);
+  if (question === "ovulation") reponse = repondreOvulation(prediction);
+  if (question === "fertilite") reponse = repondreFertiliteDate(prediction, selectedDate);
+  if (question === "restants")  reponse = repondreJoursRestants(prediction, entries, currentCycleNum);
+
+  const colorMap = { red: C.red, sage: C.sage, yellow: C.yellow, lavender: C.lavender };
+
+  return (
+    <div className="anim">
+      <PageTitle sub="Pose une question sur ton cycle">Assistant</PageTitle>
+
+      {!prediction && (
+        <Card style={{ background: C.primaryPale, border: `1px solid ${C.primary}40`, marginBottom: 20 }}>
+          <div style={{ fontSize: 14, color: C.primaryDeep }}>
+            📊 Il faut au moins un cycle complet pour utiliser l'assistant.
+          </div>
+        </Card>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
+        {questions.map(q => (
+          <button key={q.id} onClick={() => { setQuestion(q.id); setSelectedDate(""); }} style={{
+            display: "flex", alignItems: "center", gap: 12, padding: "14px 18px",
+            borderRadius: 14, border: `1.5px solid ${question === q.id ? C.primary : "var(--border-c)"}`,
+            background: question === q.id ? C.primaryPale : "var(--surface)",
+            cursor: "pointer", fontFamily: "inherit", textAlign: "left", fontSize: 14,
+            color: question === q.id ? C.primaryDeep : "var(--text-c)",
+            fontWeight: question === q.id ? 600 : 400,
+            transition: "all .15s",
+          }}>
+            <span style={{ fontSize: 20 }}>{q.icon}</span>
+            {q.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Sélecteur de date pour la fertilité */}
+      {question === "fertilite" && (
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".05em" }}>
+            Choisis une date
+          </div>
+          <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
+            min={new Date().toISOString().slice(0, 10)} />
+        </Card>
+      )}
+
+      {/* Réponse */}
+      {reponse && (
+        <Card style={{ background: "var(--surface-2)" }}>
+          <div style={{ fontSize: 15, fontWeight: 500, marginBottom: reponse.details.length ? 16 : 0, lineHeight: 1.5 }}>
+            {reponse.text}
+          </div>
+
+          {reponse.details.map((d, i) => (
+            <div key={i} style={{
+              padding: "14px 16px", background: "var(--surface)", borderRadius: 12,
+              marginBottom: 10, border: `1px solid ${d.color ? colorMap[d.color] + "40" : "var(--border-c)"}`,
+              borderLeft: `3px solid ${d.color ? colorMap[d.color] : C.primary}`,
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 4 }}>
+                {d.titre}
+              </div>
+              <div style={{ fontFamily: "Cormorant Garamond", fontSize: 22, fontWeight: 600, color: d.color ? colorMap[d.color] : C.primaryDeep, lineHeight: 1.2 }}>
+                {d.valeur}
+              </div>
+              {d.sub && <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 4 }}>{d.sub}</div>}
+            </div>
+          ))}
+
+          {reponse.footer && (
+            <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 10, fontStyle: "italic", textAlign: "center" }}>
+              {reponse.footer}
+            </div>
+          )}
+        </Card>
+      )}
+
+      <div style={{ marginTop: 32, padding: "14px 18px", background: "var(--surface-2)", borderRadius: 12, fontSize: 12, color: "var(--muted-c)", lineHeight: 1.6 }}>
+        <strong>À propos des prédictions :</strong> ces estimations sont basées sur ton historique de cycles et la méthode symptothermique. La régularité et la précision augmentent avec le nombre de cycles enregistrés. Elles ne remplacent pas une consultation médicale.
+      </div>
+    </div>
+  );
+}
+
 // ─── PARAMÈTRES ──────────────────────────────────────────────────────────────
 function Parametres({ settings, onUpdate, onNewCycle, currentCycleNum }) {
   const upd = (k, v) => onUpdate({ ...settings, [k]: v });
@@ -1612,6 +1850,7 @@ const NAVS = [
   { id: "dashboard", label: "Tableau de bord", icon: "◈" },
   { id: "cycle",     label: "Cycle actuel",    icon: "🌸" },
   { id: "historique",label: "Historique",       icon: "📖" },
+  { id: "assistant", label: "Assistant",        icon: "✦" },
   { id: "params",    label: "Paramètres",       icon: "⚙" },
 ];
 
@@ -1974,6 +2213,7 @@ export default function App() {
           {view === "dashboard"  && <Dashboard entries={entries} cycles={cycles} settings={settings} />}
           {view === "cycle"      && <CycleActuel entries={entries} cycles={cycles} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} currentCycleNum={currentCycleNum} isMobile={isMobile} />}
           {view === "historique" && <Historique entries={entries} cycles={cycles} isMobile={isMobile} onDeleteCycle={handleDeleteCycle} />}
+          {view === "assistant"  && <Assistant entries={entries} cycles={cycles} currentCycleNum={currentCycleNum} />}
           {view === "params"     && <Parametres settings={settings} onUpdate={setSettings} onNewCycle={handleNewCycle} currentCycleNum={currentCycleNum} />}
         </main>
       </div>
