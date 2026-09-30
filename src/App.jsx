@@ -1185,7 +1185,7 @@ function PhaseWheel({ avgLen, ovMean, curseurJour, onChange, size = 260 }) {
     <svg ref={svgRef} viewBox={`0 0 ${size} ${size}`} width="100%" height="100%" style={{ display: "block", touchAction: "none", overflow: "visible" }}>
       <defs>
         <filter id={`glow-${uid}`} x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="4.2" result="blur" />
+          <feGaussianBlur stdDeviation="2.4" result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
@@ -1193,8 +1193,8 @@ function PhaseWheel({ avgLen, ovMean, curseurJour, onChange, size = 260 }) {
         </filter>
         {segments.map((s, i) => (
           <linearGradient key={i} id={`grad-${uid}-${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={PHASE_COLORS[s.phase]} stopOpacity="0.65" />
-            <stop offset="100%" stopColor={PHASE_COLORS[s.phase]} stopOpacity="1" />
+            <stop offset="0%" stopColor={PHASE_COLORS[s.phase]} stopOpacity="0.75" />
+            <stop offset="100%" stopColor={PHASE_COLORS[s.phase]} stopOpacity="0.9" />
           </linearGradient>
         ))}
       </defs>
@@ -1209,8 +1209,8 @@ function PhaseWheel({ avgLen, ovMean, curseurJour, onChange, size = 260 }) {
         return (
           <path key={"g" + i}
             d={describeArc(cx, cy, r, startA, endA)}
-            fill="none" stroke={PHASE_COLORS[s.phase]} strokeWidth={9} strokeLinecap="round"
-            opacity={0.35} filter={`url(#glow-${uid})`} />
+            fill="none" stroke={PHASE_COLORS[s.phase]} strokeWidth={6} strokeLinecap="round"
+            opacity={0.16} filter={`url(#glow-${uid})`} />
         );
       })}
       {/* Arc net — avec espacement entre phases */}
@@ -1228,7 +1228,7 @@ function PhaseWheel({ avgLen, ovMean, curseurJour, onChange, size = 260 }) {
       })}
 
       {/* Halo derrière le curseur */}
-      <circle cx={hx} cy={hy} r={18} fill={handleColor} opacity={0.25} filter={`url(#glow-${uid})`} />
+      <circle cx={hx} cy={hy} r={15} fill={handleColor} opacity={0.14} filter={`url(#glow-${uid})`} />
       <circle cx={hx} cy={hy} r={12.5}
         fill={handleColor}
         stroke="var(--surface)" strokeWidth={3.5}
@@ -1343,27 +1343,27 @@ function Accueil({ entries, cycles, settings, onSaveSymptomes, onSaveSymptotherm
       <div style={{ position: "relative", width: "100%", maxWidth: 340, aspectRatio: "1", marginBottom: 30 }}>
         <PhaseWheel avgLen={avgLen} ovMean={ovMean} curseurJour={curseurJour} onChange={setCurseurJour} size={260} />
 
-        {/* Orbe central : blobs flous animés + verre dépoli */}
+        {/* Orbe central : blobs flous animés + verre dépoli, en version sobre */}
         <div style={{ position: "absolute", inset: "16%", borderRadius: "50%", overflow: "hidden" }}>
           <div style={{
             position: "absolute", inset: "-20%", borderRadius: "50%",
-            background: `radial-gradient(circle, ${phaseInfo.color}90 0%, ${phaseInfo.color}00 65%)`,
-            filter: "blur(22px)", animation: "floatBlobA 9s ease-in-out infinite",
+            background: `radial-gradient(circle, ${phaseInfo.color}45 0%, ${phaseInfo.color}00 65%)`,
+            filter: "blur(26px)", animation: "floatBlobA 12s ease-in-out infinite",
             transition: "background 0.6s ease",
           }} />
           <div style={{
             position: "absolute", inset: "-15%", borderRadius: "50%",
-            background: `radial-gradient(circle, ${phaseInfo.color}60 0%, transparent 70%)`,
-            filter: "blur(28px)", animation: "floatBlobB 11s ease-in-out infinite",
+            background: `radial-gradient(circle, ${phaseInfo.color}30 0%, transparent 70%)`,
+            filter: "blur(30px)", animation: "floatBlobB 14s ease-in-out infinite",
             transition: "background 0.6s ease",
           }} />
           <div style={{
             position: "absolute", inset: 0, borderRadius: "50%",
-            background: `radial-gradient(circle at 32% 28%, ${C.white}55, transparent 45%),
-                         radial-gradient(circle at 70% 75%, ${phaseInfo.color}45, transparent 55%),
-                         radial-gradient(circle at 50% 50%, ${phaseInfo.color}22, ${phaseInfo.color}08 70%)`,
-            border: `1px solid ${phaseInfo.color}35`,
-            boxShadow: `inset 0 2px 24px ${phaseInfo.color}25, 0 8px 32px ${phaseInfo.color}30`,
+            background: `radial-gradient(circle at 32% 28%, ${C.white}30, transparent 45%),
+                         radial-gradient(circle at 70% 75%, ${phaseInfo.color}22, transparent 55%),
+                         radial-gradient(circle at 50% 50%, ${phaseInfo.color}12, ${phaseInfo.color}05 70%)`,
+            border: `1px solid ${phaseInfo.color}25`,
+            boxShadow: `inset 0 2px 18px ${phaseInfo.color}14, 0 4px 18px ${phaseInfo.color}14`,
             transition: "background 0.6s ease, border-color 0.6s ease",
           }} />
         </div>
@@ -1378,11 +1378,11 @@ function Accueil({ entries, cycles, settings, onSaveSymptomes, onSaveSymptotherm
           <div style={{
             fontFamily: "'DM Sans', sans-serif", fontSize: "clamp(22px, 7vw, 30px)", fontWeight: 700, color: phaseInfo.color,
             textTransform: "capitalize", letterSpacing: "-.01em", marginTop: 4,
-            textShadow: `0 1px 16px ${phaseInfo.color}35`, transition: "color 0.6s ease",
+            transition: "color 0.6s ease",
           }}>
             {phaseInfo.label}
           </div>
-          <div style={{ width: 26, height: 3, background: phaseInfo.color, opacity: 0.55, marginTop: 10, borderRadius: 99, transition: "background 0.6s ease" }} />
+          <div style={{ width: 26, height: 3, background: phaseInfo.color, opacity: 0.45, marginTop: 10, borderRadius: 99, transition: "background 0.6s ease" }} />
         </div>
       </div>
 
@@ -2788,7 +2788,7 @@ function BottomNav({ view, onNavigate, onMore, hasUnsaved }) {
               width: 54, height: 54, borderRadius: "50%", border: "none", cursor: "pointer",
               marginTop: -24, flexShrink: 0, padding: 3,
               background: `conic-gradient(from 200deg, ${C.rose}, ${C.primary}, ${C.sage}, ${C.lavender}, ${C.rose})`,
-              boxShadow: active ? `0 6px 20px ${C.primary}60` : "0 3px 12px rgba(0,0,0,.18)",
+              boxShadow: active ? `0 3px 12px ${C.primary}35` : "0 2px 8px rgba(0,0,0,.14)",
               transform: active ? "scale(1.04)" : "scale(1)",
               transition: "all .2s",
             }}>
