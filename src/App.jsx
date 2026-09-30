@@ -1159,7 +1159,7 @@ function PhaseWheel({ avgLen, ovMean, curseurJour, onChange, size = 260 }) {
       {segments.map((s, i) => {
         const rawStart = dayToAngle(s.start);
         const rawEnd = dayToAngle(s.end + 1);
-        const gap = Math.min(6, Math.max(1.5, (rawEnd - rawStart) * 0.25));
+        const gap = Math.min(14, Math.max(4, (rawEnd - rawStart) * 0.4));
         const startA = rawStart + gap / 2;
         const endA = rawEnd - gap / 2;
         return (
@@ -1173,7 +1173,7 @@ function PhaseWheel({ avgLen, ovMean, curseurJour, onChange, size = 260 }) {
       {segments.map((s, i) => {
         const rawStart = dayToAngle(s.start);
         const rawEnd = dayToAngle(s.end + 1);
-        const gap = Math.min(6, Math.max(1.5, (rawEnd - rawStart) * 0.25));
+        const gap = Math.min(14, Math.max(4, (rawEnd - rawStart) * 0.4));
         const startA = rawStart + gap / 2;
         const endA = rawEnd - gap / 2;
         return (
@@ -1330,14 +1330,15 @@ function Accueil({ entries, cycles, settings, onSaveSymptomes, onSaveSymptotherm
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           pointerEvents: "none", animation: "breathe 6s ease-in-out infinite",
         }}>
-          <div style={{ fontSize: 11, color: "var(--muted-c)", textTransform: "uppercase", letterSpacing: ".14em", fontWeight: 600 }}>Phase</div>
+          <div style={{ fontSize: 10.5, color: "var(--muted-c)", textTransform: "uppercase", letterSpacing: ".18em", fontWeight: 600 }}>Phase</div>
           <div style={{
-            fontFamily: "Cormorant Garamond", fontSize: 32, fontWeight: 600, color: phaseInfo.color,
-            textTransform: "capitalize", textShadow: `0 2px 20px ${phaseInfo.color}40`, transition: "color 0.6s ease",
+            fontFamily: "'DM Sans', sans-serif", fontSize: 24, fontWeight: 700, color: phaseInfo.color,
+            textTransform: "capitalize", letterSpacing: "-.01em", marginTop: 4,
+            textShadow: `0 1px 16px ${phaseInfo.color}35`, transition: "color 0.6s ease",
           }}>
             {phaseInfo.label}
           </div>
-          <div style={{ width: 30, height: 2, background: phaseInfo.color, opacity: 0.5, marginTop: 8, borderRadius: 99, transition: "background 0.6s ease" }} />
+          <div style={{ width: 26, height: 3, background: phaseInfo.color, opacity: 0.55, marginTop: 10, borderRadius: 99, transition: "background 0.6s ease" }} />
         </div>
       </div>
 
