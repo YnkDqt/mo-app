@@ -1155,19 +1155,33 @@ function PhaseWheel({ avgLen, ovMean, curseurJour, onChange, size = 260 }) {
         ))}
       </defs>
 
-      {/* Glow layer (blurred, derrière) */}
-      {segments.map((s, i) => (
-        <path key={"g" + i}
-          d={describeArc(cx, cy, r, dayToAngle(s.start) - 4, dayToAngle(s.end) + (s.end === avgLen ? 8 : 4))}
-          fill="none" stroke={PHASE_COLORS[s.phase]} strokeWidth={9} strokeLinecap="round"
-          opacity={0.35} filter={`url(#glow-${uid})`} />
-      ))}
-      {/* Arc net */}
-      {segments.map((s, i) => (
-        <path key={i}
-          d={describeArc(cx, cy, r, dayToAngle(s.start) - 4, dayToAngle(s.end) + (s.end === avgLen ? 8 : 4))}
-          fill="none" stroke={`url(#grad-${uid}-${i})`} strokeWidth={5} strokeLinecap="round" />
-      ))}
+      {/* Glow layer (blurred, derrière) — avec espacement entre phases */}
+      {segments.map((s, i) => {
+        const rawStart = dayToAngle(s.start);
+        const rawEnd = dayToAngle(s.end + 1);
+        const gap = Math.min(6, Math.max(1.5, (rawEnd - rawStart) * 0.25));
+        const startA = rawStart + gap / 2;
+        const endA = rawEnd - gap / 2;
+        return (
+          <path key={"g" + i}
+            d={describeArc(cx, cy, r, startA, endA)}
+            fill="none" stroke={PHASE_COLORS[s.phase]} strokeWidth={9} strokeLinecap="round"
+            opacity={0.35} filter={`url(#glow-${uid})`} />
+        );
+      })}
+      {/* Arc net — avec espacement entre phases */}
+      {segments.map((s, i) => {
+        const rawStart = dayToAngle(s.start);
+        const rawEnd = dayToAngle(s.end + 1);
+        const gap = Math.min(6, Math.max(1.5, (rawEnd - rawStart) * 0.25));
+        const startA = rawStart + gap / 2;
+        const endA = rawEnd - gap / 2;
+        return (
+          <path key={i}
+            d={describeArc(cx, cy, r, startA, endA)}
+            fill="none" stroke={`url(#grad-${uid}-${i})`} strokeWidth={5} strokeLinecap="round" />
+        );
+      })}
 
       {/* Halo derrière le curseur */}
       <circle cx={hx} cy={hy} r={18} fill={handleColor} opacity={0.25} filter={`url(#glow-${uid})`} />
@@ -1286,7 +1300,7 @@ function Accueil({ entries, cycles, settings, onSaveSymptomes, onSaveSymptotherm
         <PhaseWheel avgLen={avgLen} ovMean={ovMean} curseurJour={curseurJour} onChange={setCurseurJour} size={260} />
 
         {/* Orbe central : blobs flous animés + verre dépoli */}
-        <div style={{ position: "absolute", inset: 20, borderRadius: "50%", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 42, borderRadius: "50%", overflow: "hidden" }}>
           <div style={{
             position: "absolute", inset: "-20%", borderRadius: "50%",
             background: `radial-gradient(circle, ${phaseInfo.color}90 0%, ${phaseInfo.color}00 65%)`,
@@ -1312,7 +1326,7 @@ function Accueil({ entries, cycles, settings, onSaveSymptomes, onSaveSymptotherm
 
         {/* Contenu texte centré, animation respiration douce */}
         <div style={{
-          position: "absolute", inset: 20, borderRadius: "50%",
+          position: "absolute", inset: 42, borderRadius: "50%",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           pointerEvents: "none", animation: "breathe 6s ease-in-out infinite",
         }}>
