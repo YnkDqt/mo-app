@@ -222,6 +222,8 @@ const G = `
   tbody tr:hover { background: var(--surface-2); }
   tbody td { padding: 11px 14px; }
   .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
   @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
   .anim { animation: fadeUp .35s ease both; }
   @keyframes floatBlobA { 0%,100% { transform: translate(-6%,-4%) scale(1); } 50% { transform: translate(4%,6%) scale(1.12); } }
@@ -630,8 +632,8 @@ function Modal({ open, onClose, title, subtitle, children }) {
         <div style={{
           position: "fixed", top: `calc(${TOP} + 28px)`, left: 0, right: 0, zIndex: 1002,
           padding: "8px 20px 12px",
-          borderBottom: "1px solid var(--border-c)",
           background: "var(--surface)",
+          boxShadow: "0 8px 12px -6px rgba(0,0,0,.10)",
           display: "flex", justifyContent: "space-between", alignItems: "center",
         }}>
           <div>
@@ -644,7 +646,7 @@ function Modal({ open, onClose, title, subtitle, children }) {
           }}>✕</button>
         </div>
         {/* Zone de contenu scrollable — fixed avec top calculé */}
-        <div style={{
+        <div className="no-scrollbar" style={{
           position: "fixed",
           top: `calc(${TOP} + ${subtitle ? 96 : 80}px)`,
           bottom: 0, left: 0, right: 0,
@@ -652,7 +654,7 @@ function Modal({ open, onClose, title, subtitle, children }) {
           background: "var(--surface)",
           overflowY: "scroll",
           WebkitOverflowScrolling: "touch",
-          padding: "16px 20px 100px",
+          padding: "20px 20px 110px",
         }}>
           {children}
         </div>
@@ -662,7 +664,7 @@ function Modal({ open, onClose, title, subtitle, children }) {
 
   // Desktop
   return (
-    <div onClick={onClose} style={{
+    <div onClick={onClose} className="no-scrollbar" style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", backdropFilter: "blur(4px)",
       display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 1000,
       padding: "40px 16px 40px", overflowY: "auto",
@@ -904,174 +906,214 @@ function EntryModal({ open, onClose, onSave, editEntry, cycleNum }) {
 }
 
 // ─── MODAL SYMPTÔMES ─────────────────────────────────────────────────────────
-function SymptomesModal({ open, onClose, onSave, entry, date }) {
-  const [form, setForm] = useState({});
-  useEffect(() => {
-    if (open) setForm(entry || {});
-  }, [open, entry]);
-  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const handleSave = () => { onSave({ ...(entry || {}), ...form, date, id: entry?.id || `sym_${date}_${Date.now()}` }); onClose(); };
-
-  const blocks = [
-    { key: "humeur",   label: "Humeur",   opts: HUMEUR_OPTS },
-    { key: "energie",  label: "Énergie",  opts: ENERGIE_OPTS },
-    { key: "libido",   label: "Libido & vie sexuelle", opts: LIBIDO_OPTS },
-    { key: "sommeil",  label: "Sommeil",  opts: SOMMEIL_OPTS },
-    { key: "digestion",label: "Digestion",opts: DIGESTION_OPTS },
-    { key: "peau",     label: "Peau",     opts: PEAU_OPTS },
-    { key: "appetit",  label: "Appétit & envies", opts: APPETIT_OPTS },
-    { key: "douleurs", label: "Douleurs & inconforts", opts: DOULEURS_OPTS },
-  ];
-
+// Petite feuille de sélection rapide : tap sur une option = sauvegarde + fermeture immédiate.
+// Volontairement minimale (jamais de scroll) pour rester rapide à utiliser.
+function QuickPicker({ open, onClose, title, opts, value, onPick }) {
+  if (!open) return null;
   return (
-    <Modal open={open} onClose={onClose} title="Symptômes" subtitle={fmt(date)}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        {blocks.map(b => (
-          <div key={b.key}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".05em" }}>{b.label}</div>
-            <PillSelect opts={b.opts} value={form[b.key]} onChange={v => upd(b.key, v)} nullable />
-          </div>
-        ))}
-
-        {form.libido && (
-          <div style={{ marginTop: -8 }}>
-            <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 8 }}>Rapport sexuel</div>
-            <PillSelect opts={RAPPORT_OPTS} value={form.rapport} onChange={v => upd("rapport", v)} nullable />
-          </div>
-        )}
-
-        <Field label="Notes libres">
-          <textarea placeholder="Alcool, stress, nuit agitée, voyage, maladie…" value={form.notesLibres || ""}
-            onChange={e => upd("notesLibres", e.target.value)} />
-        </Field>
-
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
-          <Btn variant="ghost" onClick={onClose}>Annuler</Btn>
-          <Btn onClick={handleSave}>Enregistrer</Btn>
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 1600,
+      display: "flex", alignItems: "flex-end", justifyContent: "center",
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: "100%", maxWidth: 440, background: "var(--surface)", borderRadius: "22px 22px 0 0",
+        padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 22px)",
+        boxShadow: "0 -8px 40px rgba(0,0,0,.18)",
+      }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+          <div style={{ width: 34, height: 4, borderRadius: 99, background: "var(--border-c)" }} />
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>{title}</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 9 }}>
+          {value && (
+            <button onClick={() => onPick(null)} style={{
+              padding: "11px 16px", borderRadius: 99, border: "1px solid var(--border-c)",
+              background: "transparent", color: "var(--muted-c)", fontSize: 14, cursor: "pointer",
+            }}>✕ Effacer</button>
+          )}
+          {opts.map(o => {
+            const active = value === o.value;
+            return (
+              <button key={o.value} onClick={() => onPick(o.value)} style={{
+                padding: "11px 18px", borderRadius: 99, border: `1.5px solid ${active ? o.color : "var(--border-c)"}`,
+                background: active ? o.color + "22" : "var(--surface-2)", color: active ? o.color : "var(--text-c)",
+                fontSize: 14, fontWeight: active ? 600 : 500, cursor: "pointer", transition: "all .12s",
+              }}>{o.label}</button>
+            );
+          })}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Carte compacte représentant une catégorie dans une grille — tap = ouvre le QuickPicker
+function CategoryCard({ icon, label, value, opts, onClick }) {
+  const filled = !!value;
+  const color = filled ? optColor(opts, value) : null;
+  return (
+    <button onClick={onClick} style={{
+      display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3,
+      padding: "12px 13px", borderRadius: 14, border: "1px solid var(--border-c)",
+      background: filled ? color + "15" : "var(--surface-2)",
+      cursor: "pointer", textAlign: "left", minHeight: 74,
+    }}>
+      <span style={{ fontSize: 17 }}>{icon}</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-c)", textTransform: "uppercase", letterSpacing: ".03em" }}>{label}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: filled ? color : "var(--muted-c)" }}>
+        {filled ? optLabel(opts, value) : "—"}
+      </span>
+    </button>
+  );
+}
+
+// ─── MODAL SYMPTÔMES (grille compacte, tient sur un écran) ───────────────────
+function SymptomesModal({ open, onClose, onSave, entry, date }) {
+  const [form, setForm] = useState({});
+  const [picker, setPicker] = useState(null);
+  useEffect(() => { if (open) setForm(entry || {}); }, [open, entry]);
+
+  const categories = [
+    { key: "humeur",   label: "Humeur",   icon: "🙂", opts: HUMEUR_OPTS },
+    { key: "energie",  label: "Énergie",  icon: "⚡", opts: ENERGIE_OPTS },
+    { key: "libido",   label: "Libido",   icon: "💗", opts: LIBIDO_OPTS },
+    { key: "rapport",  label: "Rapport",  icon: "💞", opts: RAPPORT_OPTS },
+    { key: "sommeil",  label: "Sommeil",  icon: "🌙", opts: SOMMEIL_OPTS },
+    { key: "digestion",label: "Digestion",icon: "🍃", opts: DIGESTION_OPTS },
+    { key: "peau",     label: "Peau",     icon: "✨", opts: PEAU_OPTS },
+    { key: "appetit",  label: "Appétit",  icon: "🍽️", opts: APPETIT_OPTS },
+    { key: "douleurs", label: "Douleurs", icon: "🩹", opts: DOULEURS_OPTS },
+  ];
+  const filledCount = categories.filter(c => form[c.key]).length;
+
+  const pick = (key, val) => {
+    const updated = { ...form, [key]: val };
+    setForm(updated);
+    onSave({ ...(entry || {}), ...updated, date, id: entry?.id || `sym_${date}_${Date.now()}` });
+    setPicker(null);
+  };
+
+  const activeCategory = categories.find(c => c.key === picker);
+
+  return (
+    <Modal open={open} onClose={onClose} title="Symptômes" subtitle={`${filledCount}/${categories.length} renseignés · ${fmt(date)}`}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginBottom: 16 }}>
+        {categories.map(c => (
+          <CategoryCard key={c.key} icon={c.icon} label={c.label} value={form[c.key]} opts={c.opts}
+            onClick={() => setPicker(c.key)} />
+        ))}
+      </div>
+
+      <Field label="Notes libres">
+        <textarea placeholder="Alcool, stress, nuit agitée, voyage, maladie…" value={form.notesLibres || ""}
+          onChange={e => {
+            const v = e.target.value;
+            setForm(f => ({ ...f, notesLibres: v }));
+          }}
+          onBlur={() => onSave({ ...(entry || {}), ...form, date, id: entry?.id || `sym_${date}_${Date.now()}` })}
+          style={{ minHeight: 60 }} />
+      </Field>
+
+      {activeCategory && (
+        <QuickPicker open={!!picker} onClose={() => setPicker(null)} title={activeCategory.label}
+          opts={activeCategory.opts} value={form[activeCategory.key]}
+          onPick={(v) => pick(activeCategory.key, v)} />
+      )}
     </Modal>
   );
 }
 
-// ─── MODAL SYMPTOTHERMIE ─────────────────────────────────────────────────────
+// ─── MODAL SYMPTOTHERMIE (grille compacte) ───────────────────────────────────
 function SymptothermieModal({ open, onClose, onSave, entry, date }) {
   const [form, setForm] = useState({});
-  useEffect(() => {
-    if (open) setForm(entry || {});
-  }, [open, entry]);
-  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const handleSave = () => { onSave({ ...(entry || {}), ...form, date, id: entry?.id || `sth_${date}_${Date.now()}` }); onClose(); };
+  const [picker, setPicker] = useState(null);
+  useEffect(() => { if (open) setForm(entry || {}); }, [open, entry]);
+
+  const categories = [
+    { key: "glaireSensation", label: "Sensation", icon: "💧", opts: SENSATION_OPTS },
+    { key: "glaireApparence", label: "Apparence",  icon: "👁️", opts: APPARENCE_OPTS },
+    { key: "quantiteGlaire",  label: "Quantité",   icon: "📏", opts: QUANTITE_GLAIRE_OPTS },
+    { key: "colFermete",      label: "Fermeté col",icon: "⬤", opts: FERMETE_OPTS },
+    { key: "colOuverture",    label: "Ouverture col", icon: "◯", opts: OUVERTURE_OPTS },
+  ];
+
+  const saveAll = (patch) => {
+    const updated = { ...form, ...patch };
+    setForm(updated);
+    onSave({ ...(entry || {}), ...updated, date, id: entry?.id || `sth_${date}_${Date.now()}` });
+  };
+  const pick = (key, val) => { saveAll({ [key]: val }); setPicker(null); };
+  const activeCategory = categories.find(c => c.key === picker);
 
   return (
     <Modal open={open} onClose={onClose} title="Symptothermie" subtitle={fmt(date)}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-        <div className="form-grid">
-          <Field label="Heure de prise">
-            <input type="text" placeholder="ex: 7h00" value={form.heure || ""} onChange={e => upd("heure", e.target.value)} />
-          </Field>
-          <Field label="Température (°C)">
-            <input type="number" step="0.01" min="35" max="39" placeholder="ex: 36.80"
-              value={form.temperature || ""} onChange={e => upd("temperature", e.target.value ? parseFloat(e.target.value) : "")} />
-          </Field>
-        </div>
-
-        <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
-            Glaire cervicale
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div>
-              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Sensation</div>
-              <PillSelect opts={SENSATION_OPTS} value={form.glaireSensation} onChange={v => upd("glaireSensation", v)} nullable />
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Apparence</div>
-              <PillSelect opts={APPARENCE_OPTS} value={form.glaireApparence} onChange={v => upd("glaireApparence", v)} nullable />
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Quantité</div>
-              <PillSelect opts={QUANTITE_GLAIRE_OPTS} value={form.quantiteGlaire} onChange={v => upd("quantiteGlaire", v)} nullable />
-            </div>
-          </div>
-        </div>
-
-        <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
-            Col utérin
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div>
-              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Fermeté</div>
-              <PillSelect opts={FERMETE_OPTS} value={form.colFermete} onChange={v => upd("colFermete", v)} nullable />
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Ouverture</div>
-              <PillSelect opts={OUVERTURE_OPTS} value={form.colOuverture} onChange={v => upd("colOuverture", v)} nullable />
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
-          <Btn variant="ghost" onClick={onClose}>Annuler</Btn>
-          <Btn onClick={handleSave}>Enregistrer</Btn>
-        </div>
+      <div className="form-grid" style={{ marginBottom: 16 }}>
+        <Field label="Heure de prise">
+          <input type="text" placeholder="ex: 7h00" value={form.heure || ""}
+            onChange={e => setForm(f => ({ ...f, heure: e.target.value }))}
+            onBlur={() => saveAll({})} />
+        </Field>
+        <Field label="Température (°C)">
+          <input type="number" step="0.01" min="35" max="39" placeholder="ex: 36.80"
+            value={form.temperature || ""}
+            onChange={e => setForm(f => ({ ...f, temperature: e.target.value ? parseFloat(e.target.value) : "" }))}
+            onBlur={() => saveAll({})} />
+        </Field>
       </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+        {categories.map(c => (
+          <CategoryCard key={c.key} icon={c.icon} label={c.label} value={form[c.key]} opts={c.opts}
+            onClick={() => setPicker(c.key)} />
+        ))}
+      </div>
+
+      {activeCategory && (
+        <QuickPicker open={!!picker} onClose={() => setPicker(null)} title={activeCategory.label}
+          opts={activeCategory.opts} value={form[activeCategory.key]}
+          onPick={(v) => pick(activeCategory.key, v)} />
+      )}
     </Modal>
   );
 }
 
-// ─── MODAL PERTES ────────────────────────────────────────────────────────────
+// ─── MODAL PERTES (grille compacte) ──────────────────────────────────────────
 function PertesModal({ open, onClose, onSave, entry, date }) {
   const [form, setForm] = useState({});
-  useEffect(() => {
-    if (open) setForm(entry || {});
-  }, [open, entry]);
-  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const handleSave = () => { onSave({ ...(entry || {}), ...form, date, id: entry?.id || `prt_${date}_${Date.now()}` }); onClose(); };
+  const [picker, setPicker] = useState(null);
+  useEffect(() => { if (open) setForm(entry || {}); }, [open, entry]);
+
+  const categories = [
+    { key: "flux",           label: "Flux",     icon: "🌹", opts: FLUX_OPTS },
+    { key: "couleurRegles",  label: "Couleur",  icon: "🎨", opts: COULEUR_REGLES_OPTS },
+    { key: "caillots",       label: "Caillots", icon: "●",  opts: CAILLOTS_OPTS },
+    { key: "spotting",       label: "Spotting", icon: "🔸", opts: SPOTTING_COULEUR_OPTS },
+    { key: "glaireApparence",label: "Glaire",   icon: "💧", opts: APPARENCE_OPTS },
+  ];
+  const filledCount = categories.filter(c => form[c.key]).length;
+
+  const pick = (key, val) => {
+    const updated = { ...form, [key]: val };
+    setForm(updated);
+    onSave({ ...(entry || {}), ...updated, date, id: entry?.id || `prt_${date}_${Date.now()}` });
+    setPicker(null);
+  };
+  const activeCategory = categories.find(c => c.key === picker);
 
   return (
-    <Modal open={open} onClose={onClose} title="Pertes" subtitle={fmt(date)}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
-            Règles — Flux
-          </div>
-          <PillSelect opts={FLUX_OPTS} value={form.flux} onChange={v => upd("flux", v)} nullable />
-        </div>
-
-        {form.flux && (
-          <>
-            <div>
-              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 8 }}>Couleur</div>
-              <PillSelect opts={COULEUR_REGLES_OPTS} value={form.couleurRegles} onChange={v => upd("couleurRegles", v)} nullable />
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 8 }}>Caillots</div>
-              <PillSelect opts={CAILLOTS_OPTS} value={form.caillots} onChange={v => upd("caillots", v)} nullable />
-            </div>
-          </>
-        )}
-
-        <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
-            Spotting
-          </div>
-          <PillSelect opts={SPOTTING_COULEUR_OPTS} value={form.spotting} onChange={v => upd("spotting", v)} nullable />
-        </div>
-
-        <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
-            Glaire cervicale — Apparence
-          </div>
-          <PillSelect opts={APPARENCE_OPTS} value={form.glaireApparence} onChange={v => upd("glaireApparence", v)} nullable />
-        </div>
-
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
-          <Btn variant="ghost" onClick={onClose}>Annuler</Btn>
-          <Btn onClick={handleSave}>Enregistrer</Btn>
-        </div>
+    <Modal open={open} onClose={onClose} title="Pertes" subtitle={`${filledCount}/${categories.length} renseignés · ${fmt(date)}`}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+        {categories.map(c => (
+          <CategoryCard key={c.key} icon={c.icon} label={c.label} value={form[c.key]} opts={c.opts}
+            onClick={() => setPicker(c.key)} />
+        ))}
       </div>
+
+      {activeCategory && (
+        <QuickPicker open={!!picker} onClose={() => setPicker(null)} title={activeCategory.label}
+          opts={activeCategory.opts} value={form[activeCategory.key]}
+          onPick={(v) => pick(activeCategory.key, v)} />
+      )}
     </Modal>
   );
 }
@@ -1105,12 +1147,14 @@ function PhaseWheel({ avgLen, ovMean, curseurJour, onChange, size = 260 }) {
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    const x = clientX - rect.left - cx;
-    const y = clientY - rect.top - cy;
+    // Le SVG est affiché à une taille réelle différente de ses unités internes (viewBox) → on remet à l'échelle
+    const scale = rect.width / size;
+    const x = (clientX - rect.left) / scale - cx;
+    const y = (clientY - rect.top) / scale - cy;
     let angle = Math.atan2(y, x) * 180 / Math.PI + 90;
     if (angle < 0) angle += 360;
     onChange(angleToDay(angle));
-  }, [avgLen]);
+  }, [avgLen, size]);
 
   useEffect(() => {
     if (!dragging) return;
@@ -1138,7 +1182,7 @@ function PhaseWheel({ avgLen, ovMean, curseurJour, onChange, size = 260 }) {
   const handleColor = PHASE_COLORS[getPhaseForDay(curseurJour, avgLen, ovMean).phase];
 
   return (
-    <svg ref={svgRef} width={size} height={size} style={{ touchAction: "none", overflow: "visible" }}>
+    <svg ref={svgRef} viewBox={`0 0 ${size} ${size}`} width="100%" height="100%" style={{ display: "block", touchAction: "none", overflow: "visible" }}>
       <defs>
         <filter id={`glow-${uid}`} x="-60%" y="-60%" width="220%" height="220%">
           <feGaussianBlur stdDeviation="4.2" result="blur" />
@@ -1296,11 +1340,11 @@ function Accueil({ entries, cycles, settings, onSaveSymptomes, onSaveSymptotherm
          joursAvantRegles > 0 ? `J-${joursAvantRegles} avant règles` : "Règles imminentes"}
       </div>
 
-      <div style={{ position: "relative", width: 260, height: 260, marginBottom: 4 }}>
+      <div style={{ position: "relative", width: "100%", maxWidth: 340, aspectRatio: "1", marginBottom: 30 }}>
         <PhaseWheel avgLen={avgLen} ovMean={ovMean} curseurJour={curseurJour} onChange={setCurseurJour} size={260} />
 
         {/* Orbe central : blobs flous animés + verre dépoli */}
-        <div style={{ position: "absolute", inset: 42, borderRadius: "50%", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: "16%", borderRadius: "50%", overflow: "hidden" }}>
           <div style={{
             position: "absolute", inset: "-20%", borderRadius: "50%",
             background: `radial-gradient(circle, ${phaseInfo.color}90 0%, ${phaseInfo.color}00 65%)`,
@@ -1326,13 +1370,13 @@ function Accueil({ entries, cycles, settings, onSaveSymptomes, onSaveSymptotherm
 
         {/* Contenu texte centré, animation respiration douce */}
         <div style={{
-          position: "absolute", inset: 42, borderRadius: "50%",
+          position: "absolute", inset: "16%", borderRadius: "50%",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           pointerEvents: "none", animation: "breathe 6s ease-in-out infinite",
         }}>
-          <div style={{ fontSize: 10.5, color: "var(--muted-c)", textTransform: "uppercase", letterSpacing: ".18em", fontWeight: 600 }}>Phase</div>
+          <div style={{ fontSize: "clamp(10px, 3vw, 12px)", color: "var(--muted-c)", textTransform: "uppercase", letterSpacing: ".18em", fontWeight: 600 }}>Phase</div>
           <div style={{
-            fontFamily: "'DM Sans', sans-serif", fontSize: 24, fontWeight: 700, color: phaseInfo.color,
+            fontFamily: "'DM Sans', sans-serif", fontSize: "clamp(22px, 7vw, 30px)", fontWeight: 700, color: phaseInfo.color,
             textTransform: "capitalize", letterSpacing: "-.01em", marginTop: 4,
             textShadow: `0 1px 16px ${phaseInfo.color}35`, transition: "color 0.6s ease",
           }}>
@@ -1342,19 +1386,20 @@ function Accueil({ entries, cycles, settings, onSaveSymptomes, onSaveSymptotherm
         </div>
       </div>
 
-      <div style={{ fontSize: 13, color: "var(--muted-c)", marginBottom: 24, textTransform: "capitalize" }}>
+      <div style={{ fontSize: 13, color: "var(--muted-c)", marginBottom: 28, textTransform: "capitalize" }}>
         {isToday ? "Aujourd'hui, " : ""}{dateLabel}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, width: "100%", marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, width: "100%", marginBottom: 20 }}>
         {cards.map(c => (
           <button key={c.id} onClick={() => !isFuture && setModalOuvert(c.id)} disabled={isFuture} style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-            padding: "16px 10px", borderRadius: 16, border: "1px solid var(--border-c)",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 7,
+            padding: "18px 10px", borderRadius: 18, border: "1px solid var(--border-c)",
             background: c.filled ? phaseInfo.color + "18" : "var(--surface)",
             cursor: isFuture ? "default" : "pointer", opacity: isFuture ? 0.5 : 1,
+            transition: "background .2s",
           }}>
-            <span style={{ fontSize: 20 }}>{c.icon}</span>
+            <span style={{ fontSize: 22 }}>{c.icon}</span>
             <span style={{ fontSize: 13, fontWeight: 600 }}>{c.label}</span>
             <span style={{ fontSize: 11, color: c.filled ? phaseInfo.color : "var(--muted-c)" }}>
               {statusLabel(true, c.filled)}
