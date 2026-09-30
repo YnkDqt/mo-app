@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend
@@ -65,6 +65,75 @@ const RAPPORT_OPTS = [
   { value: "avec_protection", label: "Avec protection", color: C.sage },
 ];
 
+// ── Pertes : détail des règles ──
+const FLUX_OPTS = [
+  { value: "leger",       label: "Léger",       color: C.secondary },
+  { value: "modere",      label: "Modéré",      color: C.yellow },
+  { value: "abondant",    label: "Abondant",    color: C.primary },
+  { value: "tres_abondant", label: "Très abondant", color: C.red },
+];
+const COULEUR_REGLES_OPTS = [
+  { value: "marron",     label: "Marron",     color: C.secondaryDark },
+  { value: "rouge_vif",  label: "Rouge vif",  color: C.red },
+  { value: "rose_pale",  label: "Rose pâle",  color: C.rose },
+];
+const CAILLOTS_OPTS = [
+  { value: "oui", label: "Oui", color: C.red },
+  { value: "non", label: "Non", color: C.sage },
+];
+const SPOTTING_COULEUR_OPTS = [
+  { value: "rouge",  label: "Rouge",  color: C.red },
+  { value: "marron", label: "Marron", color: C.secondaryDark },
+];
+const QUANTITE_GLAIRE_OPTS = [
+  { value: "legere",   label: "Légère",   color: C.secondary },
+  { value: "moyenne",  label: "Moyenne",  color: C.yellow },
+  { value: "abondante",label: "Abondante",color: C.primary },
+];
+
+// ── Symptômes génériques ──
+const HUMEUR_OPTS = [
+  { value: "sereine",  label: "Sereine",  color: C.sage },
+  { value: "irritable",label: "Irritable",color: C.yellow },
+  { value: "triste",   label: "Triste",   color: C.lavender },
+  { value: "anxieuse", label: "Anxieuse", color: C.red },
+];
+const ENERGIE_OPTS = [
+  { value: "en_forme", label: "En forme", color: C.sage },
+  { value: "normale",  label: "Normale",  color: C.yellow },
+  { value: "fatiguee", label: "Fatiguée", color: C.red },
+];
+const LIBIDO_OPTS = [
+  { value: "haute",  label: "Haute",  color: C.sage },
+  { value: "normale",label: "Normale",color: C.yellow },
+  { value: "basse",  label: "Basse",  color: C.muted },
+];
+const SOMMEIL_OPTS = [
+  { value: "bon",      label: "Bon",      color: C.sage },
+  { value: "moyen",    label: "Moyen",    color: C.yellow },
+  { value: "difficile",label: "Difficile",color: C.red },
+];
+const DIGESTION_OPTS = [
+  { value: "normale",   label: "Normale",   color: C.sage },
+  { value: "ballonnee", label: "Ballonnée", color: C.yellow },
+  { value: "douloureuse", label: "Douloureuse", color: C.red },
+];
+const PEAU_OPTS = [
+  { value: "nette",  label: "Nette",  color: C.sage },
+  { value: "grasse", label: "Grasse", color: C.yellow },
+  { value: "boutons",label: "Boutons",color: C.red },
+];
+const APPETIT_OPTS = [
+  { value: "normal", label: "Normal", color: C.sage },
+  { value: "envies", label: "Envies", color: C.yellow },
+  { value: "faible", label: "Faible", color: C.muted },
+];
+const DOULEURS_OPTS = [
+  { value: "aucune",  label: "Aucune",  color: C.sage },
+  { value: "legeres", label: "Légères", color: C.yellow },
+  { value: "fortes",  label: "Fortes",  color: C.red },
+];
+
 const EMPTY_FORM = {
   date: new Date().toISOString().slice(0, 10),
   temperature: "",
@@ -72,10 +141,26 @@ const EMPTY_FORM = {
   saignement: null,
   glaireSensation: null,
   glaireApparence: null,
+  quantiteGlaire: null,
   colFermete: null,
   colOuverture: null,
   rapport: null,
   perturbation: "",
+  // Pertes détaillées
+  flux: null,
+  couleurRegles: null,
+  caillots: null,
+  spotting: null,
+  // Symptômes
+  humeur: null,
+  energie: null,
+  libido: null,
+  sommeil: null,
+  digestion: null,
+  peau: null,
+  appetit: null,
+  douleurs: null,
+  notesLibres: "",
 };
 
 const DEFAULT_SETTINGS = {
@@ -139,6 +224,10 @@ const G = `
   .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
   .anim { animation: fadeUp .35s ease both; }
+  @keyframes floatBlobA { 0%,100% { transform: translate(-6%,-4%) scale(1); } 50% { transform: translate(4%,6%) scale(1.12); } }
+  @keyframes floatBlobB { 0%,100% { transform: translate(6%,4%) scale(1.05); } 50% { transform: translate(-5%,-6%) scale(0.96); } }
+  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.015); } }
+  @keyframes ringPulse { 0%,100% { opacity: .55; } 50% { opacity: .95; } }
   .badge {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 3px 9px; border-radius: 99px; font-size: 12px; font-weight: 500;
@@ -300,6 +389,81 @@ function gaussianProb(x, mean, std) {
   return Math.exp(-0.5 * ((x - mean) / std) ** 2) / (std * Math.sqrt(2 * Math.PI));
 }
 
+// ─── MOTEUR DE PHASE ─────────────────────────────────────────────────────────
+// Détermine la phase du cycle pour un jour donné (réel ou projeté),
+// à partir de la durée moyenne de cycle et du jour d'ovulation moyen.
+const PHASE_COLORS = {
+  menstruelle:  C.red,
+  folliculaire: C.primary,
+  ovulatoire:   C.sage,
+  luteale:      C.lavender,
+};
+const PHASE_LABELS = {
+  menstruelle:  "menstruelle",
+  folliculaire: "folliculaire",
+  ovulatoire:   "ovulatoire",
+  luteale:      "lutéale",
+};
+
+function getPhaseForDay(jour, avgLen, ovMean, dureeReglesMoy = 5) {
+  const ov = Math.round(ovMean);
+  const fertileStart = ov - 5;
+  const fertileEnd = ov + 1;
+  let phase;
+  if (jour <= dureeReglesMoy) phase = "menstruelle";
+  else if (jour < fertileStart) phase = "folliculaire";
+  else if (jour <= fertileEnd) phase = "ovulatoire";
+  else phase = "luteale";
+  return { phase, color: PHASE_COLORS[phase], label: PHASE_LABELS[phase] };
+}
+
+// Bornes des 4 segments (en % du cycle) pour dessiner la roue
+function phaseSegments(avgLen, ovMean, dureeReglesMoy = 5) {
+  const ov = Math.round(ovMean);
+  const fertileStart = Math.max(dureeReglesMoy + 1, ov - 5);
+  const fertileEnd = Math.min(avgLen, ov + 1);
+  return [
+    { phase: "menstruelle",  start: 1, end: dureeReglesMoy },
+    { phase: "folliculaire", start: dureeReglesMoy + 1, end: fertileStart - 1 },
+    { phase: "ovulatoire",   start: fertileStart, end: fertileEnd },
+    { phase: "luteale",      start: fertileEnd + 1, end: avgLen },
+  ].filter(s => s.end >= s.start);
+}
+
+// ─── GAMIFICATION ────────────────────────────────────────────────────────────
+// Niveau basé sur le nombre total de jours renseignés (données réellement saisies)
+const NIVEAUX = [
+  { seuil: 0,   nom: "Débutante" },
+  { seuil: 50,  nom: "Attentive" },
+  { seuil: 150, nom: "Régulière" },
+  { seuil: 300, nom: "Experte" },
+  { seuil: 500, nom: "Maîtresse du cycle" },
+];
+
+function computeGamification(entries) {
+  const joursRenseignes = entries.filter(e =>
+    e.temperature || e.saignement || e.glaireSensation || e.glaireApparence ||
+    e.humeur || e.energie || e.sommeil || e.digestion || e.peau || e.appetit || e.libido
+  ).length;
+  const xp = joursRenseignes * 5;
+  let niveauIdx = 0;
+  for (let i = 0; i < NIVEAUX.length; i++) {
+    if (xp >= NIVEAUX[i].seuil) niveauIdx = i;
+  }
+  const niveau = NIVEAUX[niveauIdx];
+  const next = NIVEAUX[niveauIdx + 1];
+  const xpMax = next ? next.seuil : niveau.seuil + 200;
+  const xpDebutNiveau = niveau.seuil;
+  return {
+    niveauNum: niveauIdx + 1,
+    nom: niveau.nom,
+    xp,
+    xpMax,
+    progres: Math.min(100, Math.round(((xp - xpDebutNiveau) / (xpMax - xpDebutNiveau)) * 100)),
+    joursRenseignes,
+  };
+}
+
 // Calcule un domaine d'axe Y propre pour les températures :
 // arrondi au 0.1, min 36.5, ticks tous les 0.1
 function tempAxisProps(data) {
@@ -315,6 +479,20 @@ function tempAxisProps(data) {
   const ticks = [];
   for (let v = lo; v <= hi + 0.0001; v = Math.round((v + 0.1) * 10) / 10) ticks.push(Math.round(v * 10) / 10);
   return { domain: [lo, hi], ticks };
+}
+
+// Une entrée a des données "Symptômes" / "Symptothermie" / "Pertes" ?
+function hasSymptomes(e) {
+  if (!e) return false;
+  return !!(e.humeur || e.energie || e.libido || e.sommeil || e.digestion || e.peau || e.appetit || e.douleurs || e.notesLibres);
+}
+function hasSymptothermie(e) {
+  if (!e) return false;
+  return !!(e.temperature || e.glaireSensation || e.glaireApparence || e.colFermete || e.colOuverture);
+}
+function hasPertes(e) {
+  if (!e) return false;
+  return !!(e.saignement || e.flux || e.spotting || e.glaireApparence);
 }
 
 function exportCSV(data, filename, columns) {
@@ -725,6 +903,461 @@ function EntryModal({ open, onClose, onSave, editEntry, cycleNum }) {
   );
 }
 
+// ─── MODAL SYMPTÔMES ─────────────────────────────────────────────────────────
+function SymptomesModal({ open, onClose, onSave, entry, date }) {
+  const [form, setForm] = useState({});
+  useEffect(() => {
+    if (open) setForm(entry || {});
+  }, [open, entry]);
+  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const handleSave = () => { onSave({ ...(entry || {}), ...form, date, id: entry?.id || `sym_${date}_${Date.now()}` }); onClose(); };
+
+  const blocks = [
+    { key: "humeur",   label: "Humeur",   opts: HUMEUR_OPTS },
+    { key: "energie",  label: "Énergie",  opts: ENERGIE_OPTS },
+    { key: "libido",   label: "Libido & vie sexuelle", opts: LIBIDO_OPTS },
+    { key: "sommeil",  label: "Sommeil",  opts: SOMMEIL_OPTS },
+    { key: "digestion",label: "Digestion",opts: DIGESTION_OPTS },
+    { key: "peau",     label: "Peau",     opts: PEAU_OPTS },
+    { key: "appetit",  label: "Appétit & envies", opts: APPETIT_OPTS },
+    { key: "douleurs", label: "Douleurs & inconforts", opts: DOULEURS_OPTS },
+  ];
+
+  return (
+    <Modal open={open} onClose={onClose} title="Symptômes" subtitle={fmt(date)}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {blocks.map(b => (
+          <div key={b.key}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 8, textTransform: "uppercase", letterSpacing: ".05em" }}>{b.label}</div>
+            <PillSelect opts={b.opts} value={form[b.key]} onChange={v => upd(b.key, v)} nullable />
+          </div>
+        ))}
+
+        {form.libido && (
+          <div style={{ marginTop: -8 }}>
+            <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 8 }}>Rapport sexuel</div>
+            <PillSelect opts={RAPPORT_OPTS} value={form.rapport} onChange={v => upd("rapport", v)} nullable />
+          </div>
+        )}
+
+        <Field label="Notes libres">
+          <textarea placeholder="Alcool, stress, nuit agitée, voyage, maladie…" value={form.notesLibres || ""}
+            onChange={e => upd("notesLibres", e.target.value)} />
+        </Field>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
+          <Btn variant="ghost" onClick={onClose}>Annuler</Btn>
+          <Btn onClick={handleSave}>Enregistrer</Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── MODAL SYMPTOTHERMIE ─────────────────────────────────────────────────────
+function SymptothermieModal({ open, onClose, onSave, entry, date }) {
+  const [form, setForm] = useState({});
+  useEffect(() => {
+    if (open) setForm(entry || {});
+  }, [open, entry]);
+  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const handleSave = () => { onSave({ ...(entry || {}), ...form, date, id: entry?.id || `sth_${date}_${Date.now()}` }); onClose(); };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Symptothermie" subtitle={fmt(date)}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+        <div className="form-grid">
+          <Field label="Heure de prise">
+            <input type="text" placeholder="ex: 7h00" value={form.heure || ""} onChange={e => upd("heure", e.target.value)} />
+          </Field>
+          <Field label="Température (°C)">
+            <input type="number" step="0.01" min="35" max="39" placeholder="ex: 36.80"
+              value={form.temperature || ""} onChange={e => upd("temperature", e.target.value ? parseFloat(e.target.value) : "")} />
+          </Field>
+        </div>
+
+        <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
+            Glaire cervicale
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Sensation</div>
+              <PillSelect opts={SENSATION_OPTS} value={form.glaireSensation} onChange={v => upd("glaireSensation", v)} nullable />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Apparence</div>
+              <PillSelect opts={APPARENCE_OPTS} value={form.glaireApparence} onChange={v => upd("glaireApparence", v)} nullable />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Quantité</div>
+              <PillSelect opts={QUANTITE_GLAIRE_OPTS} value={form.quantiteGlaire} onChange={v => upd("quantiteGlaire", v)} nullable />
+            </div>
+          </div>
+        </div>
+
+        <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
+            Col utérin
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Fermeté</div>
+              <PillSelect opts={FERMETE_OPTS} value={form.colFermete} onChange={v => upd("colFermete", v)} nullable />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Ouverture</div>
+              <PillSelect opts={OUVERTURE_OPTS} value={form.colOuverture} onChange={v => upd("colOuverture", v)} nullable />
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
+          <Btn variant="ghost" onClick={onClose}>Annuler</Btn>
+          <Btn onClick={handleSave}>Enregistrer</Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── MODAL PERTES ────────────────────────────────────────────────────────────
+function PertesModal({ open, onClose, onSave, entry, date }) {
+  const [form, setForm] = useState({});
+  useEffect(() => {
+    if (open) setForm(entry || {});
+  }, [open, entry]);
+  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const handleSave = () => { onSave({ ...(entry || {}), ...form, date, id: entry?.id || `prt_${date}_${Date.now()}` }); onClose(); };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Pertes" subtitle={fmt(date)}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
+            Règles — Flux
+          </div>
+          <PillSelect opts={FLUX_OPTS} value={form.flux} onChange={v => upd("flux", v)} nullable />
+        </div>
+
+        {form.flux && (
+          <>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 8 }}>Couleur</div>
+              <PillSelect opts={COULEUR_REGLES_OPTS} value={form.couleurRegles} onChange={v => upd("couleurRegles", v)} nullable />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 8 }}>Caillots</div>
+              <PillSelect opts={CAILLOTS_OPTS} value={form.caillots} onChange={v => upd("caillots", v)} nullable />
+            </div>
+          </>
+        )}
+
+        <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
+            Spotting
+          </div>
+          <PillSelect opts={SPOTTING_COULEUR_OPTS} value={form.spotting} onChange={v => upd("spotting", v)} nullable />
+        </div>
+
+        <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
+            Glaire cervicale — Apparence
+          </div>
+          <PillSelect opts={APPARENCE_OPTS} value={form.glaireApparence} onChange={v => upd("glaireApparence", v)} nullable />
+        </div>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
+          <Btn variant="ghost" onClick={onClose}>Annuler</Btn>
+          <Btn onClick={handleSave}>Enregistrer</Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── ROUE DE PHASE (écran d'accueil) ─────────────────────────────────────────
+function describeArc(cx, cy, r, startAngle, endAngle) {
+  const toXY = (ang) => {
+    const rad = (ang - 90) * Math.PI / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+  const start = toXY(startAngle);
+  const end = toXY(endAngle);
+  const largeArc = endAngle - startAngle <= 180 ? 0 : 1;
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+}
+
+function PhaseWheel({ avgLen, ovMean, curseurJour, onChange, size = 260 }) {
+  const svgRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+  const cx = size / 2, cy = size / 2, r = size / 2 - 16;
+  const segments = phaseSegments(avgLen, ovMean);
+  const uid = useRef(`w${Math.random().toString(36).slice(2, 8)}`).current;
+
+  const dayToAngle = (day) => ((day - 1) / avgLen) * 360;
+  const angleToDay = (angle) => {
+    const day = Math.round((angle / 360) * avgLen) + 1;
+    return Math.min(avgLen, Math.max(1, day));
+  };
+
+  const handlePointer = useCallback((clientX, clientY) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const x = clientX - rect.left - cx;
+    const y = clientY - rect.top - cy;
+    let angle = Math.atan2(y, x) * 180 / Math.PI + 90;
+    if (angle < 0) angle += 360;
+    onChange(angleToDay(angle));
+  }, [avgLen]);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const move = (e) => {
+      const p = e.touches ? e.touches[0] : e;
+      handlePointer(p.clientX, p.clientY);
+    };
+    const up = () => setDragging(false);
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    window.addEventListener("touchmove", move, { passive: false });
+    window.addEventListener("touchend", up);
+    return () => {
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+      window.removeEventListener("touchmove", move);
+      window.removeEventListener("touchend", up);
+    };
+  }, [dragging, handlePointer]);
+
+  const handleAngle = dayToAngle(curseurJour);
+  const handleRad = (handleAngle - 90) * Math.PI / 180;
+  const hx = cx + r * Math.cos(handleRad);
+  const hy = cy + r * Math.sin(handleRad);
+  const handleColor = PHASE_COLORS[getPhaseForDay(curseurJour, avgLen, ovMean).phase];
+
+  return (
+    <svg ref={svgRef} width={size} height={size} style={{ touchAction: "none", overflow: "visible" }}>
+      <defs>
+        <filter id={`glow-${uid}`} x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="4.2" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        {segments.map((s, i) => (
+          <linearGradient key={i} id={`grad-${uid}-${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={PHASE_COLORS[s.phase]} stopOpacity="0.65" />
+            <stop offset="100%" stopColor={PHASE_COLORS[s.phase]} stopOpacity="1" />
+          </linearGradient>
+        ))}
+      </defs>
+
+      {/* Glow layer (blurred, derrière) */}
+      {segments.map((s, i) => (
+        <path key={"g" + i}
+          d={describeArc(cx, cy, r, dayToAngle(s.start) - 4, dayToAngle(s.end) + (s.end === avgLen ? 8 : 4))}
+          fill="none" stroke={PHASE_COLORS[s.phase]} strokeWidth={9} strokeLinecap="round"
+          opacity={0.35} filter={`url(#glow-${uid})`} />
+      ))}
+      {/* Arc net */}
+      {segments.map((s, i) => (
+        <path key={i}
+          d={describeArc(cx, cy, r, dayToAngle(s.start) - 4, dayToAngle(s.end) + (s.end === avgLen ? 8 : 4))}
+          fill="none" stroke={`url(#grad-${uid}-${i})`} strokeWidth={5} strokeLinecap="round" />
+      ))}
+
+      {/* Halo derrière le curseur */}
+      <circle cx={hx} cy={hy} r={18} fill={handleColor} opacity={0.25} filter={`url(#glow-${uid})`} />
+      <circle cx={hx} cy={hy} r={12.5}
+        fill={handleColor}
+        stroke="var(--surface)" strokeWidth={3.5}
+        style={{ cursor: "grab", filter: "drop-shadow(0 2px 6px rgba(0,0,0,.2))" }}
+        onMouseDown={() => setDragging(true)}
+        onTouchStart={() => setDragging(true)}
+      />
+      <circle cx={hx} cy={hy} r={4} fill="var(--surface)" opacity={0.9} style={{ pointerEvents: "none" }} />
+    </svg>
+  );
+}
+
+// ─── ÉCRAN D'ACCUEIL ─────────────────────────────────────────────────────────
+function Accueil({ entries, cycles, settings, onSaveSymptomes, onSaveSymptothermie, onSavePertes }) {
+  const currentCycleNum = useMemo(() => Math.max(1, ...entries.map(e => e.cycleNum || 1)), [entries]);
+  const currentEntries = useMemo(() =>
+    entries.filter(e => e.cycleNum === currentCycleNum).sort((a, b) => a.date.localeCompare(b.date)),
+    [entries, currentCycleNum]
+  );
+
+  const cycleLengths = cycles.filter(c => c.dateFin && c.dateDebut)
+    .map(c => Math.floor((new Date(c.dateFin) - new Date(c.dateDebut)) / 86400000) + 1);
+  const avgLen = cycleLengths.length ? Math.round(cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length) : 28;
+
+  const cycleGroups = useMemo(() => {
+    const g = {};
+    entries.forEach(e => { (g[e.cycleNum] = g[e.cycleNum] || []).push(e); });
+    return g;
+  }, [entries]);
+  const ovStats = useMemo(() => {
+    const hist = Object.entries(cycleGroups).filter(([n]) => parseInt(n) < currentCycleNum).map(([, ents]) => ({ entries: ents }));
+    return computeOvulationStats(hist);
+  }, [cycleGroups, currentCycleNum]);
+  const ovMean = ovStats.mean || 14;
+
+  const todayCycleDay = useMemo(() => {
+    if (!currentEntries.length) return 1;
+    const today = new Date().toISOString().slice(0, 10);
+    const start = currentEntries[0]?.date;
+    if (!start) return 1;
+    const diff = Math.floor((new Date(today) - new Date(start)) / 86400000) + 1;
+    return Math.max(1, diff);
+  }, [currentEntries]);
+
+  const [curseurJour, setCurseurJour] = useState(todayCycleDay);
+  useEffect(() => { setCurseurJour(todayCycleDay); }, [todayCycleDay]);
+
+  const curseurDate = useMemo(() => {
+    const start = currentEntries[0]?.date || new Date().toISOString().slice(0, 10);
+    const d = new Date(start + "T00:00:00");
+    d.setDate(d.getDate() + (curseurJour - 1));
+    return d.toISOString().slice(0, 10);
+  }, [currentEntries, curseurJour]);
+
+  const phaseInfo = getPhaseForDay(curseurJour, avgLen, ovMean);
+  const isToday = curseurDate === new Date().toISOString().slice(0, 10);
+  const isFuture = curseurDate > new Date().toISOString().slice(0, 10);
+  const joursAvantRegles = avgLen - curseurJour + 1;
+
+  const entryForCurseur = entries.find(e => e.date === curseurDate);
+
+  const gami = useMemo(() => computeGamification(entries), [entries]);
+
+  const [modalOuvert, setModalOuvert] = useState(null); // "symptomes" | "symptothermie" | "pertes"
+
+  const statusLabel = (has, filled) => isFuture ? "Le jour J" : filled ? "Terminé" : "Non renseigné";
+
+  const cards = [
+    { id: "symptomes", label: "Symptômes", icon: "📝", filled: hasSymptomes(entryForCurseur) },
+    { id: "symptothermie", label: "Symptothermie", icon: "🌡️", filled: hasSymptothermie(entryForCurseur) },
+    { id: "pertes", label: "Pertes", icon: "💧", filled: hasPertes(entryForCurseur) },
+  ];
+
+  const handleSave = (category, data) => {
+    const merged = { ...(entryForCurseur || {}), ...data, date: curseurDate, cycleNum: currentCycleNum };
+    if (category === "symptomes") onSaveSymptomes(merged);
+    if (category === "symptothermie") onSaveSymptothermie(merged);
+    if (category === "pertes") onSavePertes(merged);
+  };
+
+  const dateLabel = new Date(curseurDate + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+
+  return (
+    <div className="anim" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div>
+          <div style={{ fontFamily: "Cormorant Garamond", fontSize: 26, fontWeight: 600 }}>
+            Bonjour{settings.prenom ? `, ${settings.prenom}` : ""}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 2 }}>
+            Niveau {gami.niveauNum} · {gami.nom}
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 11, color: "var(--muted-c)" }}>{gami.xp}/{gami.xpMax} XP</div>
+          <div style={{ width: 80, height: 5, borderRadius: 99, background: "var(--surface-2)", marginTop: 4, overflow: "hidden" }}>
+            <div style={{ width: `${gami.progres}%`, height: "100%", background: C.primary, borderRadius: 99 }} />
+          </div>
+        </div>
+      </div>
+
+      <div style={{
+        padding: "6px 16px", borderRadius: 99, background: "var(--surface-2)",
+        fontSize: 12, fontWeight: 600, color: "var(--muted-c)", letterSpacing: ".04em",
+        marginBottom: 20, textTransform: "uppercase",
+      }}>
+        {phaseInfo.phase === "menstruelle" && curseurJour <= 1 ? "J1 des règles" :
+         phaseInfo.phase === "menstruelle" ? `J${curseurJour} des règles` :
+         joursAvantRegles > 0 ? `J-${joursAvantRegles} avant règles` : "Règles imminentes"}
+      </div>
+
+      <div style={{ position: "relative", width: 260, height: 260, marginBottom: 4 }}>
+        <PhaseWheel avgLen={avgLen} ovMean={ovMean} curseurJour={curseurJour} onChange={setCurseurJour} size={260} />
+
+        {/* Orbe central : blobs flous animés + verre dépoli */}
+        <div style={{ position: "absolute", inset: 20, borderRadius: "50%", overflow: "hidden" }}>
+          <div style={{
+            position: "absolute", inset: "-20%", borderRadius: "50%",
+            background: `radial-gradient(circle, ${phaseInfo.color}90 0%, ${phaseInfo.color}00 65%)`,
+            filter: "blur(22px)", animation: "floatBlobA 9s ease-in-out infinite",
+            transition: "background 0.6s ease",
+          }} />
+          <div style={{
+            position: "absolute", inset: "-15%", borderRadius: "50%",
+            background: `radial-gradient(circle, ${phaseInfo.color}60 0%, transparent 70%)`,
+            filter: "blur(28px)", animation: "floatBlobB 11s ease-in-out infinite",
+            transition: "background 0.6s ease",
+          }} />
+          <div style={{
+            position: "absolute", inset: 0, borderRadius: "50%",
+            background: `radial-gradient(circle at 32% 28%, ${C.white}55, transparent 45%),
+                         radial-gradient(circle at 70% 75%, ${phaseInfo.color}45, transparent 55%),
+                         radial-gradient(circle at 50% 50%, ${phaseInfo.color}22, ${phaseInfo.color}08 70%)`,
+            border: `1px solid ${phaseInfo.color}35`,
+            boxShadow: `inset 0 2px 24px ${phaseInfo.color}25, 0 8px 32px ${phaseInfo.color}30`,
+            transition: "background 0.6s ease, border-color 0.6s ease",
+          }} />
+        </div>
+
+        {/* Contenu texte centré, animation respiration douce */}
+        <div style={{
+          position: "absolute", inset: 20, borderRadius: "50%",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          pointerEvents: "none", animation: "breathe 6s ease-in-out infinite",
+        }}>
+          <div style={{ fontSize: 11, color: "var(--muted-c)", textTransform: "uppercase", letterSpacing: ".14em", fontWeight: 600 }}>Phase</div>
+          <div style={{
+            fontFamily: "Cormorant Garamond", fontSize: 32, fontWeight: 600, color: phaseInfo.color,
+            textTransform: "capitalize", textShadow: `0 2px 20px ${phaseInfo.color}40`, transition: "color 0.6s ease",
+          }}>
+            {phaseInfo.label}
+          </div>
+          <div style={{ width: 30, height: 2, background: phaseInfo.color, opacity: 0.5, marginTop: 8, borderRadius: 99, transition: "background 0.6s ease" }} />
+        </div>
+      </div>
+
+      <div style={{ fontSize: 13, color: "var(--muted-c)", marginBottom: 24, textTransform: "capitalize" }}>
+        {isToday ? "Aujourd'hui, " : ""}{dateLabel}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, width: "100%", marginBottom: 20 }}>
+        {cards.map(c => (
+          <button key={c.id} onClick={() => !isFuture && setModalOuvert(c.id)} disabled={isFuture} style={{
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+            padding: "16px 10px", borderRadius: 16, border: "1px solid var(--border-c)",
+            background: c.filled ? phaseInfo.color + "18" : "var(--surface)",
+            cursor: isFuture ? "default" : "pointer", opacity: isFuture ? 0.5 : 1,
+          }}>
+            <span style={{ fontSize: 20 }}>{c.icon}</span>
+            <span style={{ fontSize: 13, fontWeight: 600 }}>{c.label}</span>
+            <span style={{ fontSize: 11, color: c.filled ? phaseInfo.color : "var(--muted-c)" }}>
+              {statusLabel(true, c.filled)}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <SymptomesModal open={modalOuvert === "symptomes"} onClose={() => setModalOuvert(null)}
+        onSave={(d) => handleSave("symptomes", d)} entry={entryForCurseur} date={curseurDate} />
+      <SymptothermieModal open={modalOuvert === "symptothermie"} onClose={() => setModalOuvert(null)}
+        onSave={(d) => handleSave("symptothermie", d)} entry={entryForCurseur} date={curseurDate} />
+      <PertesModal open={modalOuvert === "pertes"} onClose={() => setModalOuvert(null)}
+        onSave={(d) => handleSave("pertes", d)} entry={entryForCurseur} date={curseurDate} />
+    </div>
+  );
+}
+
 // ─── DASHBOARD ───────────────────────────────────────────────────────────────
 function Dashboard({ entries, cycles, settings }) {
   const cycleGroups = useMemo(() => {
@@ -978,7 +1611,7 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
         <>
           {/* Graphique sticky */}
           <div style={{
-            position: "sticky", top: isMobile ? 56 : 0, zIndex: 50,
+            position: "sticky", top: isMobile ? 0 : 0, zIndex: 50,
             background: "var(--bg)", paddingBottom: 12, paddingTop: 4,
             marginBottom: 8,
           }}>
@@ -1499,6 +2132,191 @@ function Historique({ entries, cycles, isMobile, onDeleteCycle }) {
   );
 }
 
+// ─── CALENDRIER MENSUEL ──────────────────────────────────────────────────────
+function Calendrier({ entries, cycles }) {
+  const [monthOffset, setMonthOffset] = useState(0);
+
+  const cycleGroups = useMemo(() => {
+    const g = {};
+    entries.forEach(e => { (g[e.cycleNum] = g[e.cycleNum] || []).push(e); });
+    return g;
+  }, [entries]);
+
+  const cycleLengths = cycles.filter(c => c.dateFin && c.dateDebut)
+    .map(c => Math.floor((new Date(c.dateFin) - new Date(c.dateDebut)) / 86400000) + 1);
+  const avgLen = cycleLengths.length ? Math.round(cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length) : 28;
+  const ovStats = useMemo(() => computeOvulationStats(Object.values(cycleGroups).map(ents => ({ entries: ents }))), [cycleGroups]);
+
+  const now = new Date();
+  const viewDate = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+  const monthLabel = viewDate.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
+  const firstDow = (viewDate.getDay() + 6) % 7; // lundi = 0
+
+  // Trouver, pour chaque cycle connu, sa date de début pour situer les jours
+  const sortedCycles = cycles.slice().sort((a, b) => a.cycleNum - b.cycleNum);
+
+  const phaseForDate = (dateStr) => {
+    // Cycle réel qui contient cette date
+    const cyc = sortedCycles.find(c => dateStr >= c.dateDebut && dateStr <= c.dateFin);
+    if (cyc) {
+      const start = new Date(cyc.dateDebut);
+      const d = new Date(dateStr);
+      const jour = Math.floor((d - start) / 86400000) + 1;
+      return getPhaseForDay(jour, avgLen, ovStats.mean);
+    }
+    // Sinon, projection depuis le dernier cycle connu
+    const last = sortedCycles[sortedCycles.length - 1];
+    if (!last) return null;
+    const lastStart = new Date(last.dateDebut);
+    const d = new Date(dateStr);
+    const diffFromStart = Math.floor((d - lastStart) / 86400000);
+    if (diffFromStart < 0) return null;
+    const jourDansProjection = ((diffFromStart % avgLen) + avgLen) % avgLen + 1;
+    return getPhaseForDay(jourDansProjection, avgLen, ovStats.mean);
+  };
+
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
+  return (
+    <div className="anim">
+      <PageTitle sub="Vue d'ensemble par phase">Calendrier</PageTitle>
+
+      <Card>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+          <button onClick={() => setMonthOffset(m => m - 1)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted-c)" }}>‹</button>
+          <div style={{ fontFamily: "Cormorant Garamond", fontSize: 20, fontWeight: 600, textTransform: "capitalize" }}>{monthLabel}</div>
+          <button onClick={() => setMonthOffset(m => m + 1)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted-c)" }}>›</button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
+          {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => (
+            <div key={i} style={{ textAlign: "center", fontSize: 11, color: "var(--muted-c)", fontWeight: 600 }}>{d}</div>
+          ))}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+          {cells.map((d, i) => {
+            if (!d) return <div key={i} />;
+            const dateStr = `${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            const phase = phaseForDate(dateStr);
+            const isToday = dateStr === todayStr;
+            return (
+              <div key={i} style={{
+                aspectRatio: "1", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 12, fontWeight: isToday ? 700 : 500,
+                background: phase ? phase.color + "22" : "var(--surface-2)",
+                color: phase ? phase.color : "var(--muted-c)",
+                border: isToday ? `1.5px solid ${phase ? phase.color : C.primary}` : "1px solid transparent",
+              }}>
+                {d}
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 18, fontSize: 11, color: "var(--muted-c)" }}>
+          {Object.entries(PHASE_LABELS).map(([key, label]) => (
+            <span key={key} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: PHASE_COLORS[key] }} />
+              <span style={{ textTransform: "capitalize" }}>{label}</span>
+            </span>
+          ))}
+        </div>
+      </Card>
+
+      <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 14, textAlign: "center" }}>
+        Les jours au-delà de l'historique réel sont des projections basées sur ta moyenne de cycle.
+      </div>
+    </div>
+  );
+}
+
+// ─── ANALYSE ──────────────────────────────────────────────────────────────────
+function Analyse({ entries, cycles }) {
+  const gami = useMemo(() => computeGamification(entries), [entries]);
+
+  const cycleLengths = useMemo(() => cycles
+    .filter(c => c.dateFin && c.dateDebut)
+    .map(c => Math.floor((new Date(c.dateFin) - new Date(c.dateDebut)) / 86400000) + 1),
+    [cycles]
+  );
+  const avgLen = cycleLengths.length ? Math.round(cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length) : null;
+  const stdLen = cycleLengths.length > 1
+    ? Math.round(Math.sqrt(cycleLengths.map(l => (l - avgLen) ** 2).reduce((a, b) => a + b, 0) / cycleLengths.length))
+    : null;
+  const regulariteLabel = stdLen === null ? null : stdLen <= 2 ? "Très régulier" : stdLen <= 5 ? "Régulier" : "Variable";
+
+  // Durée moyenne des règles (nb de jours consécutifs avec saignement/flux en début de cycle)
+  const cycleGroups = useMemo(() => {
+    const g = {};
+    entries.forEach(e => { (g[e.cycleNum] = g[e.cycleNum] || []).push(e); });
+    return g;
+  }, [entries]);
+  const dureesRegles = Object.values(cycleGroups).map(ents => {
+    const sorted = ents.slice().sort((a, b) => a.jourDuCycle - b.jourDuCycle);
+    let count = 0;
+    for (const e of sorted) {
+      if (e.saignement || e.flux) count++;
+      else if (count > 0) break;
+    }
+    return count;
+  }).filter(n => n > 0);
+  const avgRegles = dureesRegles.length ? Math.round(dureesRegles.reduce((a, b) => a + b, 0) / dureesRegles.length) : null;
+
+  const sortedCycles = cycles.slice().sort((a, b) => b.cycleNum - a.cycleNum);
+
+  return (
+    <div className="anim">
+      <PageTitle sub={`Niveau ${gami.niveauNum} · ${gami.joursRenseignes} jours renseignés`}>Analyse</PageTitle>
+
+      <Card style={{ marginBottom: 20, background: C.primaryPale, border: `1px solid ${C.primary}30` }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div>
+            <div style={{ fontFamily: "Cormorant Garamond", fontSize: 20, fontWeight: 600, color: C.primaryDeep }}>{gami.nom}</div>
+            <div style={{ fontSize: 12, color: C.primaryDeep }}>Niveau {gami.niveauNum}</div>
+          </div>
+          <div style={{ fontSize: 13, color: C.primaryDeep, fontWeight: 600 }}>{gami.xp} / {gami.xpMax} XP</div>
+        </div>
+        <div style={{ width: "100%", height: 8, borderRadius: 99, background: C.white, overflow: "hidden" }}>
+          <div style={{ width: `${gami.progres}%`, height: "100%", background: C.primary, borderRadius: 99, transition: "width .3s" }} />
+        </div>
+      </Card>
+
+      <div className="kpi-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 22 }}>
+        <KPI label="Cycle" value={avgLen ? `${avgLen}j` : "—"} sub={regulariteLabel || "Pas assez de données"} icon="🔄" />
+        <KPI label="Règles" value={avgRegles ? `${avgRegles}j` : "—"} sub="Durée moyenne" icon="🌹" color={C.red} />
+        <KPI label="Régularité" value={stdLen !== null ? `±${stdLen}j` : "—"}
+          sub={cycleLengths.length < 3 ? `${cycleLengths.length}/3 cycles nécessaires` : regulariteLabel}
+          icon="📊" color={C.sage} />
+      </div>
+
+      <Card>
+        <div style={{ fontWeight: 600, marginBottom: 12 }}>Historique des durées de cycle</div>
+        {cycleLengths.length === 0 ? (
+          <div style={{ fontSize: 13, color: "var(--muted-c)" }}>Aucun cycle complet enregistré.</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {sortedCycles.slice(0, 8).map(c => {
+              const len = c.dateFin && c.dateDebut ? Math.floor((new Date(c.dateFin) - new Date(c.dateDebut)) / 86400000) + 1 : null;
+              return (
+                <div key={c.cycleNum} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
+                  <span style={{ color: "var(--muted-c)" }}>Cycle {c.cycleNum}</span>
+                  <span style={{ fontFamily: "Cormorant Garamond", fontSize: 16, fontWeight: 600, color: C.primary }}>{len ? `${len}j` : "en cours"}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
 // ─── ASSISTANT ───────────────────────────────────────────────────────────────
 // Moteur de prédiction basé sur historique + longueur moyenne + variabilité
 
@@ -1847,12 +2665,133 @@ function Onboarding({ onStart, onLoadData, onSettings }) {
 
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
 const NAVS = [
-  { id: "dashboard", label: "Tableau de bord", icon: "◈" },
-  { id: "cycle",     label: "Cycle actuel",    icon: "🌸" },
-  { id: "historique",label: "Historique",       icon: "📖" },
-  { id: "assistant", label: "Assistant",        icon: "✦" },
-  { id: "params",    label: "Paramètres",       icon: "⚙" },
+  { id: "accueil",    label: "Accueil",          icon: "◉" },
+  { id: "cycle",      label: "Cycle actuel",     icon: "🌸" },
+  { id: "calendrier", label: "Calendrier",       icon: "📅" },
+  { id: "historique", label: "Historique",       icon: "📖" },
+  { id: "analyse",    label: "Analyse",          icon: "📊" },
+  { id: "assistant",  label: "Assistant",        icon: "✦" },
+  { id: "params",     label: "Paramètres",       icon: "⚙" },
 ];
+
+// ─── ICÔNES DE NAVIGATION (ligne, minimalistes) ──────────────────────────────
+function NavIcon({ name, size = 22, color = "currentColor" }) {
+  const p = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: color, strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
+  switch (name) {
+    case "home":
+      return <svg {...p}><circle cx="12" cy="12" r="8.2" /><circle cx="12" cy="12" r="2.4" fill={color} stroke="none" /></svg>;
+    case "cycle":
+      return <svg {...p}><path d="M12 3.2c3 3.8 6.2 7.6 6.2 11.3a6.2 6.2 0 1 1-12.4 0c0-3.7 3.2-7.5 6.2-11.3z" /></svg>;
+    case "calendar":
+      return <svg {...p}><rect x="3.5" y="5" width="17" height="15.5" rx="3" /><path d="M8 3v4M16 3v4M3.5 10h17" /></svg>;
+    case "history":
+      return <svg {...p}><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5" /><path d="M4.2 4.8v4h4" /><path d="M12 8.2v4.3l3 2" /></svg>;
+    case "more":
+      return <svg {...p}><circle cx="6" cy="12" r="1.3" fill={color} stroke="none" /><circle cx="12" cy="12" r="1.3" fill={color} stroke="none" /><circle cx="18" cy="12" r="1.3" fill={color} stroke="none" /></svg>;
+    case "chart":
+      return <svg {...p}><path d="M4.5 20V11M10.2 20V4M15.9 20v-6.5M21.5 20H2.5" /></svg>;
+    case "sparkle":
+      return <svg {...p}><path d="M12 3l1.7 5 5 1.7-5 1.7-1.7 5-1.7-5-5-1.7 5-1.7 2-5z" /></svg>;
+    case "gear":
+      return <svg {...p}><circle cx="12" cy="12" r="3" /><path d="M12 3.5v2.3M12 18.2v2.3M4.6 7.5l2 1.2M17.4 15.3l2 1.2M3.5 12h2.3M18.2 12h2.3M4.6 16.5l2-1.2M17.4 8.7l2-1.2" /></svg>;
+    case "save":
+      return <svg {...p}><path d="M12 3.5v10.5M8 10.5l4 4 4-4" /><path d="M5 15.5v3.3A2.2 2.2 0 0 0 7.2 21h9.6a2.2 2.2 0 0 0 2.2-2.2v-3.3" /></svg>;
+    default:
+      return null;
+  }
+}
+
+const BOTTOM_NAV_H = 62;
+
+function BottomNav({ view, onNavigate, onMore, hasUnsaved }) {
+  const items = [
+    { id: "historique", icon: "history",  label: "Historique" },
+    { id: "cycle",       icon: "cycle",    label: "Cycle" },
+    { id: "accueil",     icon: "home",     label: "Accueil", center: true },
+    { id: "calendrier",  icon: "calendar", label: "Calendrier" },
+    { id: "more",        icon: "more",     label: "Plus" },
+  ];
+  return (
+    <div style={{
+      position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 300,
+      height: `calc(${BOTTOM_NAV_H}px + env(safe-area-inset-bottom, 0px))`,
+      paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      background: "var(--surface)", borderTop: "1px solid var(--border-c)",
+      display: "flex", alignItems: "center", justifyContent: "space-around",
+      boxShadow: "0 -4px 20px rgba(0,0,0,.06)",
+    }}>
+      {items.map(it => {
+        if (it.center) {
+          const active = view === it.id;
+          return (
+            <button key={it.id} onClick={() => onNavigate(it.id)} style={{
+              width: 54, height: 54, borderRadius: "50%", border: "none", cursor: "pointer",
+              marginTop: -24, flexShrink: 0, padding: 3,
+              background: `conic-gradient(from 200deg, ${C.rose}, ${C.primary}, ${C.sage}, ${C.lavender}, ${C.rose})`,
+              boxShadow: active ? `0 6px 20px ${C.primary}60` : "0 3px 12px rgba(0,0,0,.18)",
+              transform: active ? "scale(1.04)" : "scale(1)",
+              transition: "all .2s",
+            }}>
+              <span style={{
+                width: "100%", height: "100%", borderRadius: "50%", background: "var(--surface)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <NavIcon name="home" size={18} color={active ? C.primaryDeep : "var(--muted-c)"} />
+              </span>
+            </button>
+          );
+        }
+        const active = it.id !== "more" && view === it.id;
+        return (
+          <button key={it.id} onClick={() => it.id === "more" ? onMore() : onNavigate(it.id)} style={{
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+            background: "none", border: "none", cursor: "pointer", padding: "4px 8px",
+            color: active ? C.primary : "var(--muted-c)", position: "relative", minWidth: 44,
+          }}>
+            <NavIcon name={it.icon} size={21} color={active ? C.primary : "var(--muted-c)"} />
+            <span style={{ fontSize: 10, fontWeight: active ? 600 : 500 }}>{it.label}</span>
+            {it.id === "more" && hasUnsaved && (
+              <span style={{ position: "absolute", top: 0, right: 6, width: 6, height: 6, borderRadius: "50%", background: C.primary }} />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PlusSheet({ open, onClose, onNavigate, onOpenData, hasUnsaved }) {
+  const items = [
+    { id: "analyse",   icon: "chart",   label: "Analyse" },
+    { id: "assistant", icon: "sparkle", label: "Assistant" },
+    { id: "params",    icon: "gear",    label: "Paramètres" },
+  ];
+  return (
+    <Modal open={open} onClose={onClose} title="Plus">
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {items.map(it => (
+          <button key={it.id} onClick={() => { onNavigate(it.id); onClose(); }} style={{
+            display: "flex", alignItems: "center", gap: 14, padding: "14px 14px",
+            borderRadius: 14, border: "none", background: "var(--surface-2)", cursor: "pointer",
+            fontFamily: "inherit", fontSize: 15, color: "var(--text-c)", textAlign: "left",
+          }}>
+            <NavIcon name={it.icon} size={20} color={C.primary} />
+            {it.label}
+          </button>
+        ))}
+        <button onClick={() => { onOpenData(); onClose(); }} style={{
+          display: "flex", alignItems: "center", gap: 14, padding: "14px 14px",
+          borderRadius: 14, border: "none", background: "var(--surface-2)", cursor: "pointer",
+          fontFamily: "inherit", fontSize: 15, color: "var(--text-c)", textAlign: "left", position: "relative",
+        }}>
+          <NavIcon name="save" size={20} color={C.primary} />
+          Données
+          {hasUnsaved && <span style={{ position: "absolute", top: 16, right: 16, width: 7, height: 7, borderRadius: "50%", background: C.primary }} />}
+        </button>
+      </div>
+    </Modal>
+  );
+}
 
 // ─── PERSISTANCE ─────────────────────────────────────────────────────────────
 const STORAGE_KEY = "mo_data_v1";
@@ -1875,9 +2814,9 @@ function saveToStorage(entries, cycles, settings) {
 
 // ─── APP ROOT ────────────────────────────────────────────────────────────────
 export default function App() {
-  const [view, setView] = useState("dashboard");
+  const [view, setView] = useState("accueil");
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [plusOpen, setPlusOpen] = useState(false);
   const [dataModalOpen, setDataModalOpen] = useState(false);
   const [hasUnsaved, setHasUnsaved] = useState(false);
 
@@ -2037,7 +2976,7 @@ export default function App() {
     setShowOnboarding(false);
   }, []);
 
-  const navigate = (id) => { setView(id); setDrawerOpen(false); };
+  const navigate = (id) => { setView(id); setPlusOpen(false); };
 
   const Sidebar = () => (
     <div style={{
@@ -2100,64 +3039,6 @@ export default function App() {
     </div>
   );
 
-  // Mobile topbar + drawer
-  const MobileHeader = () => (
-    <div style={{
-      position: "fixed", top: 0, left: 0, right: 0, height: 56,
-      background: "var(--surface)", borderBottom: "1px solid var(--border-c)",
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "0 18px", zIndex: 100,
-    }}>
-      <img src="/logo.png" alt="Mo" style={{ width: 36, height: 36, display: "block" }} />
-      <div style={{ fontSize: 13, fontWeight: 500 }}>{NAVS.find(n => n.id === view)?.label}</div>
-      <button onClick={() => setDrawerOpen(true)} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "var(--text-c)" }}>☰</button>
-    </div>
-  );
-
-  const Drawer = () => (
-    <>
-      <div onClick={() => setDrawerOpen(false)} style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,.4)", zIndex: 200,
-        opacity: drawerOpen ? 1 : 0, pointerEvents: drawerOpen ? "auto" : "none", transition: "opacity .2s"
-      }} />
-      <div style={{
-        position: "fixed", top: 0, left: 0, bottom: 0, width: 260,
-        background: "var(--surface)", zIndex: 201, padding: "24px 16px",
-        transform: drawerOpen ? "translateX(0)" : "translateX(-100%)",
-        transition: "transform .25s ease", boxShadow: "4px 0 24px rgba(0,0,0,.12)",
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28, padding: "0 8px" }}>
-          <img src="/logo.png" alt="Mo" style={{ width: 44, height: 44, display: "block" }} />
-          <button onClick={() => setDrawerOpen(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted-c)" }}>✕</button>
-        </div>
-        <nav style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {NAVS.map(n => {
-            const active = view === n.id;
-            return (
-              <button key={n.id} onClick={() => navigate(n.id)} style={{
-                display: "flex", alignItems: "center", gap: 10, padding: "11px 14px",
-                borderRadius: 12, border: "none", cursor: "pointer", fontFamily: "inherit",
-                fontSize: 14, fontWeight: active ? 600 : 400, textAlign: "left",
-                background: active ? C.primaryPale : "transparent", color: active ? C.primaryDeep : "var(--text-c)",
-              }}>
-                {n.icon} {n.label}
-              </button>
-            );
-          })}
-        </nav>
-        <button onClick={() => { setDataModalOpen(true); setDrawerOpen(false); }} style={{
-          display: "flex", alignItems: "center", gap: 8, padding: "11px 14px",
-          borderRadius: 12, border: `1px solid var(--border-c)`, cursor: "pointer",
-          fontFamily: "inherit", fontSize: 14, background: "transparent", color: "var(--muted-c)",
-          marginTop: 16, width: "100%", position: "relative"
-        }}>
-          💾 Données
-          {hasUnsaved && <span style={{ width: 7, height: 7, borderRadius: "50%", background: C.primary, position: "absolute", top: 12, right: 14 }} />}
-        </button>
-      </div>
-    </>
-  );
-
   // Bannière iOS — s'affiche uniquement sur Safari iOS, pas déjà installée, pas déjà fermée
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
@@ -2176,9 +3057,10 @@ export default function App() {
       {/* Bannière installation iOS */}
       {showIOSBanner && (
         <div style={{
-          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 500,
+          position: "fixed", left: 0, right: 0, zIndex: 500,
+          bottom: isMobile ? `calc(${BOTTOM_NAV_H}px + env(safe-area-inset-bottom, 0px))` : 0,
           background: "var(--surface)", borderTop: `2px solid ${C.primary}`,
-          padding: "16px 18px 28px", boxShadow: "0 -4px 24px rgba(0,0,0,.12)",
+          padding: "16px 18px 20px", boxShadow: "0 -4px 24px rgba(0,0,0,.12)",
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -2207,16 +3089,25 @@ export default function App() {
       )}
       <div style={{ display: "flex", minHeight: "100vh" }}>
         {!isMobile && <Sidebar />}
-        {isMobile && <MobileHeader />}
-        {isMobile && <Drawer />}
-        <main className={isMobile ? "page-padding" : ""} style={{ flex: 1, padding: isMobile ? "76px 16px 40px" : "44px 52px", maxWidth: isMobile ? undefined : 1100 }}>
-          {view === "dashboard"  && <Dashboard entries={entries} cycles={cycles} settings={settings} />}
+        <main style={{
+          flex: 1,
+          padding: isMobile ? `18px 16px calc(${BOTTOM_NAV_H}px + env(safe-area-inset-bottom, 0px) + 28px)` : "44px 52px",
+          maxWidth: isMobile ? undefined : 1100,
+        }}>
+          {view === "accueil"    && <Accueil entries={entries} cycles={cycles} settings={settings} onSaveSymptomes={handleAdd} onSaveSymptothermie={handleAdd} onSavePertes={handleAdd} />}
           {view === "cycle"      && <CycleActuel entries={entries} cycles={cycles} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} currentCycleNum={currentCycleNum} isMobile={isMobile} />}
+          {view === "calendrier" && <Calendrier entries={entries} cycles={cycles} />}
           {view === "historique" && <Historique entries={entries} cycles={cycles} isMobile={isMobile} onDeleteCycle={handleDeleteCycle} />}
+          {view === "analyse"    && <Analyse entries={entries} cycles={cycles} />}
           {view === "assistant"  && <Assistant entries={entries} cycles={cycles} currentCycleNum={currentCycleNum} />}
           {view === "params"     && <Parametres settings={settings} onUpdate={setSettings} onNewCycle={handleNewCycle} currentCycleNum={currentCycleNum} />}
         </main>
       </div>
+      {isMobile && (
+        <BottomNav view={view} onNavigate={navigate} onMore={() => setPlusOpen(true)} hasUnsaved={hasUnsaved} />
+      )}
+      <PlusSheet open={plusOpen} onClose={() => setPlusOpen(false)} onNavigate={navigate}
+        onOpenData={() => setDataModalOpen(true)} hasUnsaved={hasUnsaved} />
       <DataModal open={dataModalOpen} onClose={() => setDataModalOpen(false)}
         onLoad={handleLoad} hasUnsaved={hasUnsaved}
         entries={entries} cycles={cycles} settings={settings} />
