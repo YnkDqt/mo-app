@@ -92,8 +92,6 @@ const SAIGNEMENT_OPTS = [
   { value: "normal",   label: "Normal",   color: C.primary },
   { value: "abondant", label: "Abondant", color: C.red },
 ];
-// Options affichées dans le formulaire de saisie (sans "Aucun")
-const SAIGNEMENT_FORM_OPTS = SAIGNEMENT_OPTS.filter(o => o.value !== "aucun");
 const SENSATION_OPTS = [
   { value: "seche",      label: "Sèche",      color: C.yellow },
   { value: "humide",     label: "Humide",     color: C.primary },
@@ -166,24 +164,6 @@ const TEST_OVULATION_OPTS = [
   { value: "presque",  label: "Presque positif",color: C.yellow },
   { value: "positif",  label: "Positif",        color: C.sage },
 ];
-
-const EMPTY_FORM = {
-  date: new Date().toISOString().slice(0, 10),
-  temperature: "",
-  heure: "",
-  saignement: null,
-  glaireSensation: null,
-  glaireApparence: null,
-  quantiteGlaire: null,
-  colFermete: null,
-  colOuverture: null,
-  rapport: null,
-  perturbation: "",
-  flux: null,
-  couleurRegles: null,
-  caillots: null,
-  spotting: null,
-};
 
 const DEFAULT_SETTINGS = {
   prenom: "",
@@ -891,30 +871,6 @@ function Empty({ icon, title, sub, action }) {
   );
 }
 
-// Sélecteur à pills pour les options
-function PillSelect({ opts, value, onChange, nullable }) {
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-      {nullable && value && (
-        <button onClick={() => onChange(null)} style={{
-          padding: "5px 12px", borderRadius: 99, border: `1px solid var(--border-c)`,
-          background: "transparent", fontSize: 12, cursor: "pointer", color: "var(--muted-c)"
-        }}>✕ Aucun</button>
-      )}
-      {opts.map(o => {
-        const active = value === o.value;
-        return (
-          <button key={o.value} onClick={() => onChange(active ? null : o.value)} style={{
-            padding: "5px 14px", borderRadius: 99, border: `1.5px solid ${active ? o.color : "var(--border-c)"}`,
-            background: active ? o.color + "22" : "transparent", color: active ? o.color : "var(--muted-c)",
-            fontSize: 13, fontWeight: active ? 600 : 400, cursor: "pointer", transition: "all .15s"
-          }}>{o.label}</button>
-        );
-      })}
-    </div>
-  );
-}
-
 // Badge coloré pour afficher une valeur
 function ValBadge({ opts, val }) {
   if (!val) return <span style={{ color: "var(--muted-c)" }}>—</span>;
@@ -978,100 +934,6 @@ function DataModal({ open, onClose, onLoad, hasUnsaved, entries, cycles, setting
             <input type="file" accept=".json" onChange={load} style={{ display: "none" }} />
           </label>
         </Card>
-      </div>
-    </Modal>
-  );
-}
-
-// ─── FORMULAIRE D'ENTRÉE ─────────────────────────────────────────────────────
-function EntryModal({ open, onClose, onSave, editEntry, cycleNum }) {
-  const [form, setForm] = useState(EMPTY_FORM);
-
-  useEffect(() => {
-    if (editEntry) setForm({ ...EMPTY_FORM, ...editEntry });
-    else setForm({ ...EMPTY_FORM, date: todayStr() });
-  }, [editEntry, open]);
-
-  const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-  const handleSave = () => {
-    if (!form.date) return;
-    onSave({ ...form, id: editEntry?.id || Date.now(), cycleNum });
-    onClose();
-  };
-
-  return (
-    <Modal open={open} onClose={onClose}
-      title={editEntry ? "Modifier l'entrée" : "Nouvelle entrée"}
-      subtitle={editEntry ? fmt(editEntry.date) : fmt(form.date)}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-        <div className="form-grid">
-          <Field label="Date">
-            <input type="date" value={form.date} onChange={e => upd("date", e.target.value)} />
-          </Field>
-          <Field label="Température (°C)">
-            <input type="number" step="0.01" min="35" max="39" placeholder="ex: 36.80"
-              value={form.temperature} onChange={e => upd("temperature", e.target.value ? parseFloat(e.target.value) : "")} />
-          </Field>
-        </div>
-
-        <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
-            Saignements
-          </div>
-          <PillSelect opts={SAIGNEMENT_FORM_OPTS} value={form.saignement} onChange={v => upd("saignement", v)} nullable />
-        </div>
-
-        <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
-            Glaire cervicale
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div>
-              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Sensation</div>
-              <PillSelect opts={SENSATION_OPTS} value={form.glaireSensation} onChange={v => upd("glaireSensation", v)} nullable />
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Apparence</div>
-              <PillSelect opts={APPARENCE_OPTS} value={form.glaireApparence} onChange={v => upd("glaireApparence", v)} nullable />
-            </div>
-          </div>
-        </div>
-
-        <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
-            Col utérin
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div>
-              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Fermeté</div>
-              <PillSelect opts={FERMETE_OPTS} value={form.colFermete} onChange={v => upd("colFermete", v)} nullable />
-            </div>
-            <div>
-              <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 6 }}>Ouverture</div>
-              <PillSelect opts={OUVERTURE_OPTS} value={form.colOuverture} onChange={v => upd("colOuverture", v)} nullable />
-            </div>
-          </div>
-        </div>
-
-        <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-c)", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".06em" }}>
-            Rapport sexuel
-          </div>
-          <PillSelect opts={RAPPORT_OPTS} value={form.rapport} onChange={v => upd("rapport", v)} nullable />
-        </div>
-
-        <div style={{ borderTop: "1px solid var(--border-c)", paddingTop: 18 }}>
-          <Field label="Perturbation / Note">
-            <textarea placeholder="Alcool, stress, nuit agitée, voyage, maladie…" value={form.perturbation}
-              onChange={e => upd("perturbation", e.target.value)} />
-          </Field>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
-          <Btn variant="ghost" onClick={onClose}>Annuler</Btn>
-          <Btn onClick={handleSave}>Enregistrer</Btn>
-        </div>
       </div>
     </Modal>
   );
@@ -2237,12 +2099,32 @@ function Dashboard({ entries, cycles, settings }) {
   );
 }
 
-// ─── SUIVI DU CYCLE ACTUEL ───────────────────────────────────────────────────
-function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum, isMobile }) {
-  const [editEntry, setEditEntry] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
+// Badges d'une entrée : mêmes données que l'accueil (Pertes, Symptothermie, Symptômes)
+function entryBadges(e) {
+  const out = [];
+  const flux = e.flux || ({ faible: "leger", normal: "modere", abondant: "abondant" })[e.saignement];
+  if (flux) out.push([FLUX_OPTS, flux]);
+  if (e.couleurRegles) out.push([COULEUR_REGLES_OPTS, e.couleurRegles]);
+  if (e.caillots === "oui") out.push([CAILLOTS_OPTS, "oui"]);
+  if (e.spotting) out.push([SPOTTING_COULEUR_OPTS, e.spotting]);
+  else if (e.saignement === "spotting") out.push([SAIGNEMENT_OPTS, "spotting"]);
+  const q = glaireQualiteOf(e);
+  if (q) out.push([GLAIRE_QUALITE_OPTS, q]);
+  if (e.quantiteGlaire) out.push([QUANTITE_GLAIRE_OPTS, e.quantiteGlaire]);
+  if (e.testOvulation) out.push([TEST_OVULATION_OPTS, e.testOvulation]);
+  if (e.colFermete) out.push([FERMETE_OPTS, e.colFermete]);
+  if (e.colOuverture) out.push([OUVERTURE_OPTS, e.colOuverture]);
+  if (e.rapport) out.push([RAPPORT_OPTS, e.rapport]);
+  return out;
+}
+
+// ─── CYCLE ACTUEL ────────────────────────────────────────────────────────────
+function CycleActuel({ entries, cycles, settings, onAdd, onDelete, onUpdateSettings, onNavigate, currentCycleNum, isMobile }) {
+  const { cycleStart, avgLen, ovMean, dureeRegles } = useCycleStats(entries, cycles);
+  const today = todayStr();
+  const [day, setDay] = useState(null);     // date en cours d'édition (null = fermé)
+  const [modal, setModal] = useState(null); // "symptomes" | "symptothermie" | "pertes"
   const [confirmId, setConfirmId] = useState(null);
-  const [dupeDialog, setDupeDialog] = useState(null); // { existing, incoming }
 
   const cycleEntries = useMemo(() =>
     entries.filter(e => e.cycleNum === currentCycleNum).sort((a, b) => a.date.localeCompare(b.date)),
@@ -2251,35 +2133,24 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
 
   const tempData = cycleEntries
     .filter(e => e.temperature && e.jourDuCycle)
-    .map(e => ({
-      jour: e.jourDuCycle,
-      temp: e.temperature,
-      date: fmtShort(e.date),
-      fertile: e.glaireApparence === "fertile" ? e.temperature : null,
-    }));
+    .map(e => ({ jour: e.jourDuCycle, temp: e.temperature, date: fmtShort(e.date),
+      fertile: glaireQualiteOf(e) === "blanc_oeuf" ? e.temperature : null }));
 
-  const openNew = () => { setEditEntry(null); setModalOpen(true); };
-  const openEdit = (e) => { setEditEntry(e); setModalOpen(true); };
+  const entryForDay = day ? entries.find(e => e.date === day) : null;
+  const handleSave = (data) => onAdd({ ...(entryForDay || {}), ...data, date: day, cycleNum: currentCycleNum });
 
-  const handleSave = (entry) => {
-    if (editEntry) {
-      onEdit(entry);
-      return;
-    }
-    // Nouvelle entrée : vérifier si la date existe déjà dans ce cycle
-    const existing = cycleEntries.find(e => e.date === entry.date);
-    const hasData = existing && Object.entries(existing).some(([k, v]) =>
-      !["id","date","cycleNum","jourDuCycle"].includes(k) && v !== null && v !== "" && v !== undefined
-    );
-    if (existing && hasData) {
-      setDupeDialog({ existing, incoming: entry });
-    } else if (existing) {
-      // Entrée existante vide → on remplace silencieusement
-      onEdit({ ...entry, id: existing.id, cycleNum: existing.cycleNum, jourDuCycle: existing.jourDuCycle });
-    } else {
-      onAdd(entry);
-    }
-  };
+  const dm = day ? fmtDM(day) : "";
+  const weekday = day ? capFirst(new Date(day + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long" })) : "";
+  const dateLabel = day === today ? `Aujourd'hui · ${dm}` : `${weekday} · ${dm}`;
+  const jourCycle = day ? diffDays(day, cycleStart) + 1 : 0;
+  const phaseColor = day ? getPhaseForDay(Math.max(1, jourCycle), avgLen, ovMean, dureeRegles).color : C.primary;
+
+  const cards = [
+    { id: "symptomes", label: "Symptômes", icon: "edit", n: symCount(entryForDay), fem: false },
+    { id: "symptothermie", label: "Symptothermie", icon: "thermo", n: sthCount(entryForDay), fem: true },
+    { id: "pertes", label: "Pertes", icon: "drop", n: pertesCount(entryForDay), fem: true },
+  ];
+  const closeAll = () => { setModal(null); setDay(null); };
 
   return (
     <div className="anim">
@@ -2287,25 +2158,20 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
         <PageTitle sub={`${cycleEntries.length} jours enregistrés`}>
           Cycle {currentCycleNum} — En cours
         </PageTitle>
-        <Btn onClick={openNew}>＋ Nouvelle entrée</Btn>
+        <Btn onClick={() => setDay(today)}>＋ Nouvelle entrée</Btn>
       </div>
 
       {cycleEntries.length === 0 ? (
         <Empty icon="🌸" title="Aucune entrée pour ce cycle"
           sub="Commence à enregistrer tes observations quotidiennes."
-          action={<Btn onClick={openNew}>＋ Première entrée</Btn>} />
+          action={<Btn onClick={() => setDay(today)}>＋ Première entrée</Btn>} />
       ) : (
         <>
-          {/* Graphique sticky */}
-          <div style={{
-            position: "sticky", top: isMobile ? 0 : 0, zIndex: 50,
-            background: "var(--bg)", paddingBottom: 12, paddingTop: 4,
-            marginBottom: 8,
-          }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 50, background: "var(--bg)", paddingBottom: 12, paddingTop: 4, marginBottom: 8 }}>
             <Card style={{ boxShadow: "0 4px 20px rgba(0,0,0,.07)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                 <div style={{ fontWeight: 600 }}>Courbe de température</div>
-                <div style={{ fontSize: 12, color: "var(--muted-c)" }}>Points verts = glaire fertile</div>
+                <div style={{ fontSize: 12, color: "var(--muted-c)" }}>Points verts = glaire blanc d'œuf</div>
               </div>
               <ResponsiveContainer width="100%" height={180}>
                 <LineChart data={tempData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
@@ -2321,20 +2187,14 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
             </Card>
           </div>
 
-          {/* Tableau desktop / Cartes mobile */}
           <Card noPad>
             {isMobile ? (
               <div>
                 {cycleEntries.map(e => (
-                  <div key={e.id} onClick={() => openEdit(e)} style={{
-                    padding: "14px 16px", borderBottom: "1px solid var(--border-c)",
-                    cursor: "pointer", transition: "background .15s",
-                  }}>
+                  <div key={e.id} onClick={() => setDay(e.date)} style={{ padding: "14px 16px", borderBottom: "1px solid var(--border-c)", cursor: "pointer" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontFamily: "Cormorant Garamond", fontSize: 22, fontWeight: 600, color: C.primary, minWidth: 32 }}>
-                          J{e.jourDuCycle}
-                        </span>
+                        <span style={{ fontFamily: "Cormorant Garamond", fontSize: 22, fontWeight: 600, color: C.primary, minWidth: 32 }}>J{e.jourDuCycle}</span>
                         <div>
                           <div style={{ fontSize: 13, fontWeight: 500 }}>{fmt(e.date)}</div>
                           {e.temperature && (
@@ -2349,17 +2209,11 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
                         style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 16, padding: "0 4px" }}>✕</button>
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
-                      {e.saignement      && <ValBadge opts={SAIGNEMENT_OPTS} val={e.saignement} />}
-                      {e.glaireSensation && <ValBadge opts={SENSATION_OPTS}  val={e.glaireSensation} />}
-                      {e.glaireApparence && <ValBadge opts={APPARENCE_OPTS}  val={e.glaireApparence} />}
-                      {e.colFermete      && <ValBadge opts={FERMETE_OPTS}    val={e.colFermete} />}
-                      {e.colOuverture    && <ValBadge opts={OUVERTURE_OPTS}  val={e.colOuverture} />}
-                      {e.rapport         && <ValBadge opts={RAPPORT_OPTS}    val={e.rapport} />}
+                      {entryBadges(e).map(([opts, val], i) => <ValBadge key={i} opts={opts} val={val} />)}
+                      {symCount(e) > 0 && <span className="badge" style={{ background: "var(--chip)", color: "var(--muted-c)" }}>{symCount(e)} symptôme{symCount(e) > 1 ? "s" : ""}</span>}
                     </div>
-                    {e.perturbation && (
-                      <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 5, fontStyle: "italic" }}>
-                        {e.perturbation}
-                      </div>
+                    {e.notesLibres && (
+                      <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 5, fontStyle: "italic" }}>{e.notesLibres}</div>
                     )}
                   </div>
                 ))}
@@ -2369,48 +2223,47 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
                 <table>
                   <thead>
                     <tr>
-                      <th>J</th>
-                      <th>Date</th>
-                      <th>Temp.</th>
-                      <th>Saignement</th>
-                      <th>Glaire sensation</th>
-                      <th>Glaire apparence</th>
-                      <th>Col</th>
-                      <th>Rapport</th>
-                      <th>Note</th>
-                      <th></th>
+                      <th>J</th><th>Date</th><th>Temp.</th><th>Flux</th><th>Couleur</th><th>Caillots</th><th>Spotting</th>
+                      <th>Glaire</th><th>Quantité</th><th>Test ovul.</th><th>Col</th><th>Rapport</th><th>Symptômes</th><th>Note</th><th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {cycleEntries.map(e => (
-                      <tr key={e.id} onClick={() => openEdit(e)}>
-                        <td style={{ fontWeight: 600, color: C.primary, fontFamily: "Cormorant Garamond", fontSize: 16 }}>
-                          {e.jourDuCycle || "—"}
-                        </td>
-                        <td style={{ whiteSpace: "nowrap", fontSize: 13 }}>{fmtShort(e.date)}</td>
-                        <td style={{ fontWeight: e.temperature ? 600 : 400, fontFamily: e.temperature ? "Cormorant Garamond" : "inherit", fontSize: e.temperature ? 16 : 14 }}>
-                          {e.temperature ? `${e.temperature}°` : "—"}
-                        </td>
-                        <td><ValBadge opts={SAIGNEMENT_OPTS} val={e.saignement} /></td>
-                        <td><ValBadge opts={SENSATION_OPTS} val={e.glaireSensation} /></td>
-                        <td><ValBadge opts={APPARENCE_OPTS} val={e.glaireApparence} /></td>
-                        <td>
-                          {e.colFermete || e.colOuverture ? (
-                            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                              {e.colFermete && <ValBadge opts={FERMETE_OPTS} val={e.colFermete} />}
-                              {e.colOuverture && <ValBadge opts={OUVERTURE_OPTS} val={e.colOuverture} />}
-                            </div>
-                          ) : "—"}
-                        </td>
-                        <td><ValBadge opts={RAPPORT_OPTS} val={e.rapport} /></td>
-                        <td style={{ fontSize: 12, color: "var(--muted-c)", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {e.perturbation || "—"}
-                        </td>
-                        <td onClick={ev => { ev.stopPropagation(); setConfirmId(e.id); }}>
-                          <span style={{ color: C.muted, cursor: "pointer", fontSize: 16 }}>✕</span>
-                        </td>
-                      </tr>
-                    ))}
+                    {cycleEntries.map(e => {
+                      const flux = e.flux || ({ faible: "leger", normal: "modere", abondant: "abondant" })[e.saignement];
+                      const spot = e.spotting || (e.saignement === "spotting" ? "oui" : null);
+                      return (
+                        <tr key={e.id} onClick={() => setDay(e.date)}>
+                          <td style={{ fontWeight: 600, color: C.primary, fontFamily: "Cormorant Garamond", fontSize: 16 }}>{e.jourDuCycle || "—"}</td>
+                          <td style={{ whiteSpace: "nowrap", fontSize: 13 }}>{fmtShort(e.date)}</td>
+                          <td style={{ fontWeight: e.temperature ? 600 : 400, fontFamily: e.temperature ? "Cormorant Garamond" : "inherit", fontSize: e.temperature ? 16 : 14 }}>
+                            {e.temperature ? `${e.temperature}°` : "—"}
+                          </td>
+                          <td><ValBadge opts={FLUX_OPTS} val={flux} /></td>
+                          <td><ValBadge opts={COULEUR_REGLES_OPTS} val={e.couleurRegles} /></td>
+                          <td><ValBadge opts={CAILLOTS_OPTS} val={e.caillots} /></td>
+                          <td>{spot === "oui" ? <ValBadge opts={SAIGNEMENT_OPTS} val="spotting" /> : <ValBadge opts={SPOTTING_COULEUR_OPTS} val={spot} />}</td>
+                          <td><ValBadge opts={GLAIRE_QUALITE_OPTS} val={glaireQualiteOf(e)} /></td>
+                          <td><ValBadge opts={QUANTITE_GLAIRE_OPTS} val={e.quantiteGlaire} /></td>
+                          <td><ValBadge opts={TEST_OVULATION_OPTS} val={e.testOvulation} /></td>
+                          <td>
+                            {e.colFermete || e.colOuverture ? (
+                              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                                {e.colFermete && <ValBadge opts={FERMETE_OPTS} val={e.colFermete} />}
+                                {e.colOuverture && <ValBadge opts={OUVERTURE_OPTS} val={e.colOuverture} />}
+                              </div>
+                            ) : "—"}
+                          </td>
+                          <td><ValBadge opts={RAPPORT_OPTS} val={e.rapport} /></td>
+                          <td style={{ fontSize: 13 }}>{symCount(e) || "—"}</td>
+                          <td style={{ fontSize: 12, color: "var(--muted-c)", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {e.notesLibres || "—"}
+                          </td>
+                          <td onClick={ev => { ev.stopPropagation(); setConfirmId(e.id); }}>
+                            <span style={{ color: C.muted, cursor: "pointer", fontSize: 16 }}>✕</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -2419,71 +2272,51 @@ function CycleActuel({ entries, cycles, onAdd, onEdit, onDelete, currentCycleNum
         </>
       )}
 
-      <EntryModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={handleSave}
-        editEntry={editEntry} cycleNum={currentCycleNum} />
+      {/* Entrée du jour : mêmes feuilles que l'accueil */}
+      <Sheet open={!!day && !modal} onClose={closeAll}
+        head={<SheetHead dateLabel={dateLabel} title="Entrée" sub={jourCycle >= 1 ? `Jour ${jourCycle} du cycle` : ""} onDone={closeAll} />}>
+        <Panel title="Date">
+          <input type="date" value={day || ""} min={cycleStart} max={today}
+            onChange={e => { const v = e.target.value; if (v && v >= cycleStart && v <= today) setDay(v); }}
+            style={{ height: 46, borderRadius: 16, fontSize: 16 }} />
+        </Panel>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
+          {cards.map(c => (
+            <button key={c.id} onClick={() => setModal(c.id)} style={{
+              display: "flex", alignItems: "center", gap: 14, padding: "18px 18px", borderRadius: 24, cursor: "pointer",
+              border: `1px solid ${c.n > 0 ? C.cta + "66" : "var(--border-c)"}`, background: c.n > 0 ? C.cta + "1f" : "var(--surface)",
+              color: "var(--text-c)", textAlign: "left",
+            }}>
+              <span style={{ width: 38, height: 38, borderRadius: "50%", background: phaseColor + "33", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Ico name={c.icon} size={20} color={phaseColor} />
+              </span>
+              <span style={{ flex: 1 }}>
+                <span style={{ display: "block", fontSize: 16, fontWeight: 600 }}>{c.label}</span>
+                <span style={{ display: "block", fontSize: 13, color: c.n > 0 ? C.primaryLight : "var(--muted-c)", marginTop: 2 }}>
+                  {c.n > 0 ? `${c.n} enregistré${c.fem ? "e" : ""}${c.n > 1 ? "s" : ""}` : "Non renseigné"}
+                </span>
+              </span>
+              <Ico name="chevR" size={18} color="var(--muted-c)" sw={2.4} />
+            </button>
+          ))}
+        </div>
+      </Sheet>
+
+      <SymptomesSheet open={modal === "symptomes"} onClose={() => setModal(null)} onSave={handleSave}
+        entry={entryForDay} date={day} dateLabel={dateLabel} settings={settings} onUpdateSettings={onUpdateSettings} />
+      <SymptothermieSheet open={modal === "symptothermie"} onClose={() => setModal(null)} onSave={handleSave}
+        entry={entryForDay} date={day} dateLabel={dateLabel} onOpenCourbe={() => { closeAll(); onNavigate("courbe"); }} />
+      <PertesSheet open={modal === "pertes"} onClose={() => setModal(null)} onSave={handleSave}
+        entry={entryForDay} date={day} dateLabel={dateLabel} />
+
       <ConfirmDialog open={!!confirmId}
         message="Supprimer cette entrée ? Cette action est irréversible."
         onConfirm={() => { onDelete(confirmId); setConfirmId(null); }}
         onCancel={() => setConfirmId(null)} />
-
-      {/* Dialog doublon de date */}
-      {dupeDialog && (
-        <div onClick={() => setDupeDialog(null)} style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", backdropFilter: "blur(4px)",
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1100, padding: 24
-        }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background: "var(--surface)", borderRadius: 18, padding: 28, maxWidth: 420, width: "100%",
-            boxShadow: "0 24px 64px rgba(0,0,0,.2)"
-          }}>
-            <div style={{ fontFamily: "Cormorant Garamond", fontSize: 22, fontWeight: 600, marginBottom: 8 }}>
-              Entrée existante
-            </div>
-            <p style={{ color: "var(--muted-c)", fontSize: 14, marginBottom: 22, lineHeight: 1.6 }}>
-              Il y a déjà une entrée pour le <strong>{fmt(dupeDialog.incoming.date)}</strong>. Que veux-tu faire ?
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button onClick={() => {
-                onEdit({ ...dupeDialog.incoming, id: dupeDialog.existing.id, cycleNum: dupeDialog.existing.cycleNum, jourDuCycle: dupeDialog.existing.jourDuCycle });
-                setDupeDialog(null);
-              }} style={{
-                padding: "12px 18px", borderRadius: 12, border: `1.5px solid ${C.primary}`,
-                background: C.primaryPale, color: C.primaryDeep, fontFamily: "inherit",
-                fontSize: 14, fontWeight: 600, cursor: "pointer", textAlign: "left"
-              }}>
-                Remplacer — écraser les données existantes
-              </button>
-              <button onClick={() => {
-                // Fusionner : les nouvelles valeurs écrasent les nulls de l'existante
-                const merged = { ...dupeDialog.existing };
-                Object.entries(dupeDialog.incoming).forEach(([k, v]) => {
-                  if (!["id","cycleNum","jourDuCycle"].includes(k) && v !== null && v !== "" && v !== undefined) {
-                    merged[k] = v;
-                  }
-                });
-                onEdit(merged);
-                setDupeDialog(null);
-              }} style={{
-                padding: "12px 18px", borderRadius: 12, border: `1.5px solid var(--border-c)`,
-                background: "var(--surface-2)", color: "var(--text-c)", fontFamily: "inherit",
-                fontSize: 14, fontWeight: 500, cursor: "pointer", textAlign: "left"
-              }}>
-                Fusionner — compléter les champs manquants
-              </button>
-              <button onClick={() => setDupeDialog(null)} style={{
-                padding: "10px 18px", borderRadius: 12, border: "none",
-                background: "transparent", color: "var(--muted-c)", fontFamily: "inherit",
-                fontSize: 14, cursor: "pointer", textAlign: "left"
-              }}>
-                Annuler
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
+
 
 // ─── HISTORIQUE ──────────────────────────────────────────────────────────────
 function Historique({ entries, cycles, isMobile, onDeleteCycle }) {
@@ -3644,15 +3477,6 @@ export default function App() {
     });
   }, [entries, currentCycleNum, recomputeCycle]);
 
-  const handleEdit = useCallback((entry) => {
-    const merged = entries.map(e => e.id === entry.id ? entry : e);
-    const { entries: recomputed, cycleInfo } = recomputeCycle(merged, entry.cycleNum);
-    setEntries(recomputed);
-    if (cycleInfo) {
-      setCycles(prev => prev.map(c => c.cycleNum === entry.cycleNum ? { ...c, ...cycleInfo } : c));
-    }
-  }, [entries, recomputeCycle]);
-
   const handleDelete = useCallback((id) => {
     const toDelete = entries.find(e => e.id === id);
     if (!toDelete) return;
@@ -3862,7 +3686,7 @@ export default function App() {
         }}>
           {view === "accueil"    && <Accueil entries={entries} cycles={cycles} settings={settings} onSave={handleAdd} onUpdateSettings={updateSettings} onNavigate={navigate} focusDate={focusDate} onFocusConsumed={() => setFocusDate(null)} />}
           {view === "courbe"     && <Courbe entries={entries} cycles={cycles} onBack={() => navigate("accueil")} onNavigate={navigate} />}
-          {view === "cycle"      && <CycleActuel entries={entries} cycles={cycles} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} currentCycleNum={currentCycleNum} isMobile={isMobile} />}
+          {view === "cycle"      && <CycleActuel entries={entries} cycles={cycles} settings={settings} onAdd={handleAdd} onDelete={handleDelete} onUpdateSettings={updateSettings} onNavigate={navigate} currentCycleNum={currentCycleNum} isMobile={isMobile} />}
           {view === "calendrier" && <Calendrier entries={entries} cycles={cycles} onBack={() => navigate("accueil")} onPickDate={pickDate} />}
           {view === "historique" && <Historique entries={entries} cycles={cycles} isMobile={isMobile} onDeleteCycle={handleDeleteCycle} />}
           {view === "analyse"    && <Analyse entries={entries} cycles={cycles} />}
