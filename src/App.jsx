@@ -2150,7 +2150,7 @@ function entryBadges(e) {
 }
 
 // ─── CYCLE ACTUEL ────────────────────────────────────────────────────────────
-function CycleActuel({ entries, cycles, settings, onAdd, onDelete, onUpdateSettings, onNavigate, currentCycleNum, isMobile }) {
+function CycleActuel({ entries, cycles, settings, onAdd, onDelete, onUpdateSettings, onNavigate, onMoveStart, currentCycleNum, isMobile }) {
   const { cycleStart, avgLen, ovMean, dureeRegles } = useCycleStats(entries, cycles);
   const today = todayStr();
   const [day, setDay] = useState(null);     // date en cours d'édition (null = fermé)
@@ -2182,6 +2182,7 @@ function CycleActuel({ entries, cycles, settings, onAdd, onDelete, onUpdateSetti
     { id: "pertes", label: "Pertes", icon: "drop", n: pertesCount(entryForDay), fem: true },
   ];
   const closeAll = () => { setModal(null); setDay(null); };
+  const prevStart = cycles.find(c => c.cycleNum === currentCycleNum - 1)?.dateDebut;
 
   return (
     <div className="anim">
@@ -2191,6 +2192,19 @@ function CycleActuel({ entries, cycles, settings, onAdd, onDelete, onUpdateSetti
         </PageTitle>
         <Btn onClick={() => setDay(today)}>＋ Nouvelle entrée</Btn>
       </div>
+
+      {currentCycleNum > 1 && (
+        <Card style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>Début du cycle</div>
+              <div style={{ fontSize: 12, color: "var(--muted-c)" }}>Premier jour des règles</div>
+            </div>
+            <input type="date" value={cycleStart} max={today} min={prevStart ? addDays(prevStart, 1) : undefined}
+              onChange={e => e.target.value && onMoveStart(e.target.value)} style={{ width: "auto", minWidth: 150 }} />
+          </div>
+        </Card>
+      )}
 
       {cycleEntries.length === 0 ? (
         <Empty icon="🌸" title="Aucune entrée pour ce cycle"
@@ -3178,6 +3192,9 @@ function Assistant({ entries, cycles, currentCycleNum }) {
 
 // ─── PARAMÈTRES ──────────────────────────────────────────────────────────────
 function Parametres({ settings, onUpdate, onNewCycle, currentCycleNum, entries }) {
+  const [startDate, setStartDate] = useState(todayStr());
+  const curStart = useMemo(() => (entries || []).filter(e => e.cycleNum === currentCycleNum).map(e => e.date).sort()[0], [entries, currentCycleNum]);
+  const startOk = !!startDate && startDate <= todayStr() && (!curStart || startDate > curStart);
   const upd = (k, v) => onUpdate({ ...settings, [k]: v });
   const gami = useMemo(() => computeGamification(entries || []), [entries]);
 
@@ -3226,17 +3243,22 @@ function Parametres({ settings, onUpdate, onNewCycle, currentCycleNum, entries }
         <Card>
           <div style={{ fontWeight: 600, marginBottom: 12, fontSize: 15 }}>Nouveau cycle</div>
           <p style={{ fontSize: 13, color: "var(--muted-c)", marginBottom: 10, lineHeight: 1.6 }}>
-            À utiliser le premier jour de tes règles (cycle {currentCycleNum + 1}).
+            Choisis le premier jour de tes règles (cycle {currentCycleNum + 1}). Les jours déjà saisis depuis cette date passent dans le nouveau cycle.
           </p>
           <div style={{ fontSize: 13, background: C.sagePale, border: `1px solid ${C.sage}40`, borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: C.sage.replace("8F", "5A"), lineHeight: 1.6 }}>
             💾 Un fichier de sauvegarde sera automatiquement téléchargé. Enregistre-le dans ton Drive ou envoie-le par mail pour ne pas perdre tes données.
           </div>
-          <Btn variant="soft" onClick={() => {
-            if (confirm(`Commencer le cycle ${currentCycleNum + 1} aujourd'hui ?\n\nUn fichier de sauvegarde sera téléchargé automatiquement.`)) {
-              onNewCycle();
+          <Field label="Premier jour des règles">
+            <input type="date" value={startDate} max={todayStr()} min={curStart ? addDays(curStart, 1) : undefined}
+              onChange={e => setStartDate(e.target.value)} />
+          </Field>
+          <div style={{ height: 14 }} />
+          <Btn variant="soft" disabled={!startOk} onClick={() => {
+            if (confirm(`Commencer le cycle ${currentCycleNum + 1} le ${fmt(startDate)} ?\n\nUn fichier de sauvegarde sera téléchargé automatiquement.`)) {
+              onNewCycle(startDate);
             }
           }}>
-            🌱 Démarrer le cycle {currentCycleNum + 1}
+            Démarrer le cycle {currentCycleNum + 1}
           </Btn>
         </Card>
 
@@ -3528,27 +3550,42 @@ export default function App() {
     setCycles(prev => prev.filter(c => c.cycleNum !== cycleNum));
   }, []);
 
-  const handleNewCycle = useCallback(() => {
-    const newNum = currentCycleNum + 1;
-    const today = todayStr();
-
-    // Snapshot des données actuelles AVANT mutation — pour la sauvegarde
-    const prevCycleEntries = entries.filter(e => e.cycleNum === currentCycleNum && e.date < today);
-    const prevDates = prevCycleEntries.map(e => e.date).sort();
-    const updatedPrevCycle = cycles.map(c => c.cycleNum === currentCycleNum
-      ? { ...c, dateFin: prevDates[prevDates.length - 1] || c.dateDebut, nbJours: prevDates.length }
-      : c
-    );
-    const snapshotEntries = entries.filter(e => !(e.cycleNum === currentCycleNum && e.date >= today));
-    const snapshotData = {
-      entries: snapshotEntries,
-      cycles: updatedPrevCycle,
-      settings,
-      exportedAt: new Date().toISOString(),
-      meta: { totalCycles: currentCycleNum, cycleTermine: currentCycleNum, dateExport: today }
+  // Place le début du cycle n à startDate : les entrées des cycles n-1 et n sont réparties selon cette date
+  const applyCycleStart = useCallback((entriesIn, cyclesIn, n, startDate) => {
+    const prevN = n - 1;
+    let ents = entriesIn.map(e => (e.cycleNum === n || e.cycleNum === prevN) && prevN >= 1
+      ? { ...e, cycleNum: e.date >= startDate ? n : prevN } : e);
+    if (!ents.some(e => e.cycleNum === n && e.date === startDate)) {
+      ents = [...ents, {
+        id: Date.now(), date: startDate, cycleNum: n, jourDuCycle: 1,
+        temperature: null, saignement: null, glaireSensation: null, glaireApparence: null,
+        colFermete: null, colOuverture: null, rapport: null, perturbation: null, heure: null,
+      }];
+    }
+    const infos = {};
+    [n, prevN].forEach(k => {
+      if (k < 1) return;
+      const r = recomputeCycle(ents, k);
+      ents = r.entries;
+      if (r.cycleInfo) infos[k] = r.cycleInfo;
+    });
+    const nextCycles = cyclesIn.some(c => c.cycleNum === n) ? cyclesIn : [...cyclesIn, { cycleNum: n }];
+    return {
+      entries: ents,
+      cycles: nextCycles.map(c => infos[c.cycleNum] ? { ...c, ...infos[c.cycleNum] } : c),
     };
+  }, [recomputeCycle]);
 
-    // Téléchargement automatique de la sauvegarde
+  const handleNewCycle = useCallback((startDate) => {
+    const today = todayStr();
+    const start = startDate || today;
+    const curStart = entries.filter(e => e.cycleNum === currentCycleNum).map(e => e.date).sort()[0];
+    if (start > today || (curStart && start <= curStart)) return false;
+    const newNum = currentCycleNum + 1;
+
+    // Sauvegarde automatique AVANT mutation
+    const snapshotData = { entries, cycles, settings, exportedAt: new Date().toISOString(),
+      meta: { totalCycles: currentCycleNum, cycleTermine: currentCycleNum, dateExport: today } };
     const blob = new Blob([JSON.stringify(snapshotData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -3557,29 +3594,24 @@ export default function App() {
     a.click();
     URL.revokeObjectURL(url);
 
-    // Mutation du state
-    setEntries(prev => {
-      const trimmed = prev.filter(e => !(e.cycleNum === currentCycleNum && e.date >= today));
-      const newEntry = {
-        id: Date.now(), date: today, cycleNum: newNum, jourDuCycle: 1,
-        temperature: null, saignement: null,
-        glaireSensation: null, glaireApparence: null,
-        colFermete: null, colOuverture: null,
-        rapport: null, perturbation: null, heure: null,
-      };
-      return [...trimmed, newEntry];
-    });
-
-    setCycles(prev => {
-      const updatedPrev = prev.map(c => c.cycleNum === currentCycleNum
-        ? { ...c, dateFin: prevDates[prevDates.length - 1] || c.dateDebut, nbJours: prevDates.length, nbEntrees: prevDates.length }
-        : c
-      );
-      return [...updatedPrev, { cycleNum: newNum, dateDebut: today, dateFin: today, nbJours: 1, nbEntrees: 1 }];
-    });
-
+    // Les entrées futures du cycle en cours sont supprimées ; celles depuis la date choisie passent au nouveau cycle
+    const kept = entries.filter(e => !(e.cycleNum === currentCycleNum && e.date > today));
+    const res = applyCycleStart(kept, cycles, newNum, start);
+    setEntries(res.entries);
+    setCycles(res.cycles);
     setView("cycle");
-  }, [currentCycleNum, entries, cycles, settings]);
+    return true;
+  }, [currentCycleNum, entries, cycles, settings, applyCycleStart]);
+
+  // Modifier la date de début du cycle en cours
+  const handleMoveStart = useCallback((startDate) => {
+    const today = todayStr();
+    const prevStart = cycles.find(c => c.cycleNum === currentCycleNum - 1)?.dateDebut;
+    if (currentCycleNum < 2 || !startDate || startDate > today || (prevStart && startDate <= prevStart)) return;
+    const res = applyCycleStart(entries, cycles, currentCycleNum, startDate);
+    setEntries(res.entries);
+    setCycles(res.cycles);
+  }, [currentCycleNum, entries, cycles, applyCycleStart]);
 
   const handleLoad = useCallback((data) => {
     const newEntries = data.entries || [];
@@ -3717,7 +3749,7 @@ export default function App() {
         }}>
           {view === "accueil"    && <Accueil entries={entries} cycles={cycles} settings={settings} onSave={handleAdd} onUpdateSettings={updateSettings} onNavigate={navigate} focusDate={focusDate} onFocusConsumed={() => setFocusDate(null)} />}
           {view === "courbe"     && <Courbe entries={entries} cycles={cycles} onBack={() => navigate("accueil")} onNavigate={navigate} />}
-          {view === "cycle"      && <CycleActuel entries={entries} cycles={cycles} settings={settings} onAdd={handleAdd} onDelete={handleDelete} onUpdateSettings={updateSettings} onNavigate={navigate} currentCycleNum={currentCycleNum} isMobile={isMobile} />}
+          {view === "cycle"      && <CycleActuel entries={entries} cycles={cycles} settings={settings} onAdd={handleAdd} onDelete={handleDelete} onUpdateSettings={updateSettings} onNavigate={navigate} onMoveStart={handleMoveStart} currentCycleNum={currentCycleNum} isMobile={isMobile} />}
           {view === "calendrier" && <Calendrier entries={entries} cycles={cycles} onBack={() => navigate("accueil")} onPickDate={pickDate} />}
           {view === "historique" && <Historique entries={entries} cycles={cycles} isMobile={isMobile} onDeleteCycle={handleDeleteCycle} />}
           {view === "analyse"    && <Analyse entries={entries} cycles={cycles} />}
