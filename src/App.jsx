@@ -1659,6 +1659,18 @@ const headBtn = {
   color: "var(--muted-c)",
 };
 
+// Liste lisible des symptômes saisis (même source que la feuille Symptômes)
+function symSummary(e) {
+  const out = [];
+  if (!e || !e.sym) return out;
+  SYM_CATS.forEach(c => (c.sections || []).forEach(sec => {
+    const v = e.sym[sec.key];
+    if (sec.type === "scale") { if (typeof v === "number") out.push(`${sec.title || c.label} : ${sec.levels[v]}`); }
+    else (v || []).forEach(x => out.push(x));
+  }));
+  return out;
+}
+
 function Accueil({ entries, cycles, settings, onSave, onUpdateSettings, onNavigate, focusDate, onFocusConsumed }) {
   const { currentCycleNum, cycleStart, avgLen, ovMean, dureeRegles, todayCycleDay } = useCycleStats(entries, cycles);
   const today = todayStr();
@@ -1741,6 +1753,25 @@ function Accueil({ entries, cycles, settings, onSave, onUpdateSettings, onNaviga
           </button>
         ))}
       </div>
+
+      {!isFuture && hasAnyData(entryForCurseur) && (
+        <div style={{ width: "100%", marginTop: 18, padding: "16px 16px 14px", borderRadius: 22, border: "1px solid var(--border-c)", background: "var(--surface)" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {entryForCurseur.temperature && (
+              <span className="badge" style={{ background: C.primaryDeep + "22", color: C.primaryDeep }}>
+                {fmtTemp(entryForCurseur.temperature)} °C{entryForCurseur.heure ? ` · ${fmtHeure(entryForCurseur.heure)}` : ""}
+              </span>
+            )}
+            {entryBadges(entryForCurseur).map(([opts, val], i) => <ValBadge key={i} opts={opts} val={val} />)}
+          </div>
+          {symSummary(entryForCurseur).length > 0 && (
+            <div style={{ marginTop: 12, fontSize: 13.5, color: "var(--muted-c)", lineHeight: 1.6 }}>{symSummary(entryForCurseur).join(" · ")}</div>
+          )}
+          {entryForCurseur.notesLibres && (
+            <div style={{ marginTop: 10, fontSize: 13.5, fontStyle: "italic", color: "var(--muted-c)" }}>{entryForCurseur.notesLibres}</div>
+          )}
+        </div>
+      )}
 
       <SymptomesSheet open={modalOuvert === "symptomes"} onClose={() => setModalOuvert(null)} onSave={handleSave}
         entry={entryForCurseur} date={curseurDate} dateLabel={dateLabel} settings={settings} onUpdateSettings={onUpdateSettings} />
