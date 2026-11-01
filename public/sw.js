@@ -1,4 +1,4 @@
-const CACHE = "mo-v2";
+const CACHE = "mo-v3";
 const SHELL = ["/", "/index.html", "/logo.png", "/icon-192.png", "/icon-512.png", "/favicon.png", "/manifest.json"];
 
 self.addEventListener("install", e => {

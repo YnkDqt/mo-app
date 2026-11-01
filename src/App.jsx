@@ -6,29 +6,82 @@ import {
 
 // ─── PALETTE ────────────────────────────────────────────────────────────────
 const C = {
-  bg:           "#FDF8F3",
+  // Thème clair
+  bg:           "#FFF7F9",
   white:        "#FFFFFF",
-  sand:         "#F7F0E8",
-  sandDark:     "#EDE3D8",
-  primary:      "#E8944A",
-  primaryLight: "#F0A96A",
-  primaryPale:  "#FDF0E3",
-  primaryDeep:  "#B5621C",
-  secondary:    "#C4A882",
-  secondaryPale:"#F5EEE5",
-  secondaryDark:"#9A7A56",
-  rose:         "#E87D7D",
-  rosePale:     "#FDEAEA",
-  sage:         "#8FAF8A",
-  sagePale:     "#EBF4E9",
-  lavender:     "#A08CBF",
-  lavenderPale: "#F0EBF8",
-  text:         "#2D2318",
-  muted:        "#9A8878",
-  border:       "#E8DDD0",
-  green:        "#72A870", greenPale:  "#E9F4E8",
-  yellow:       "#D4A843", yellowPale: "#FDF4DE",
-  red:          "#C96060", redPale:    "#FCEAEA",
+  sand:         "#FBEEF2",
+  sandDark:     "#F3DAE4",
+  text:         "#2A1020",
+  muted:        "#9A7E8C",
+  border:       "#EBD3DD",
+  // Thème sombre (référence : écrans de l'app d'origine)
+  dBg:          "#0F070D",
+  dSheet:       "#120912",
+  dSurface:     "#1B0C1A",
+  dSurface2:    "#2D0F25",
+  dSurface3:    "#3D1733",
+  dBorder:      "#2A1427",
+  dChipBorder:  "#3E1B36",
+  dBand:        "#221321",
+  dText:        "#FBF3F6",
+  dMuted:       "#B9A4B0",
+  // Accents
+  primary:      "#E0245E",
+  primaryLight: "#F0709A",
+  primaryPale:  "rgba(224,36,94,.14)",
+  primaryDeep:  "#EE5C8A",
+  cta:          "#D91A4C",
+  ctaText:      "#1A0510",
+  wine:         "#6B1A3A",
+  wineDot:      "#7D1A3E",
+  wineEdge:     "#C0204F",
+  avatarBg:     "#4A1428",
+  scrim:        "rgba(5,2,4,.72)",
+  secondary:    "#B98A66",
+  secondaryPale:"rgba(185,138,102,.16)",
+  secondaryDark:"#C99A74",
+  rose:         "#F0709A",
+  rosePale:     "rgba(240,112,154,.14)",
+  sage:         "#6FBF8F",
+  sagePale:     "rgba(111,191,143,.15)",
+  lavender:     "#A855F7",
+  lavenderPale: "rgba(168,85,247,.15)",
+  green:        "#6FBF8F", greenPale:  "rgba(111,191,143,.15)",
+  yellow:       "#E8B84A", yellowPale: "rgba(232,184,74,.15)",
+  red:          "#E8264F", redPale:    "rgba(232,38,79,.14)",
+  // Phases (anneau + orbe)
+  phMens:       "#EE2A5C",
+  phFol:        "#FF3D8F",
+  phOvu:        "#FF7A3A",
+  phLut:        "#A855F7",
+  phMensDim:    "#7A1B40",
+  phFolDim:     "#7A1B40",
+  phOvuDim:     "#8B4A2B",
+  phLutDim:     "#4C2B8C",
+  // Icônes de catégories
+  icBandage:    "#F58BAE",
+  icGut:        "#CC7A4A",
+  icSmile:      "#EE4C86",
+  icBolt:       "#F2B83E",
+  icHeart:      "#EE5C86",
+  icHair:       "#8E7BDB",
+  icQuest:      "#6E5864",
+  icMoon:       "#5B8DEF",
+  icSport:      "#EC5F86",
+  icFood:       "#E8963E",
+  icPill:       "#F77FA0",
+  icNote:       "#A07BE0",
+  icGlaire:     "#4F86E0",
+  icSpot:       "#A8704E",
+  icRegles:     "#E04545",
+};
+
+// Orbe central : [clair, base, foncé] par phase
+const ORB = {
+  menstruelle:  { light: "#F8C9D2", base: "#F29BB0", dark: "#E0396A" },
+  folliculaire: { light: "#F7BFD6", base: "#F27BB4", dark: "#EC4C9E" },
+  ovulatoire:   { light: "#F4CDB5", base: "#F4A074", dark: "#EE7438" },
+  luteale:      { light: "#D8BCF5", base: "#B98AF0", dark: "#8A45E8" },
 };
 
 // ─── CONSTANTES ─────────────────────────────────────────────────────────────
@@ -63,15 +116,17 @@ const OUVERTURE_OPTS = [
 const RAPPORT_OPTS = [
   { value: "sans_protection", label: "Sans protection", color: C.lavender },
   { value: "avec_protection", label: "Avec protection", color: C.sage },
+  { value: "inconnue",        label: "Protection non renseignée", color: C.muted },
 ];
 
-// ── Pertes : détail des règles ──
+// ── Pertes ──
 const FLUX_OPTS = [
-  { value: "leger",       label: "Léger",       color: C.secondary },
-  { value: "modere",      label: "Modéré",      color: C.yellow },
-  { value: "abondant",    label: "Abondant",    color: C.primary },
+  { value: "leger",         label: "Léger",         color: C.secondary },
+  { value: "modere",        label: "Modéré",        color: C.yellow },
+  { value: "abondant",      label: "Abondant",      color: C.primary },
   { value: "tres_abondant", label: "Très abondant", color: C.red },
 ];
+const FLUX_TO_SAIGNEMENT = { leger: "faible", modere: "normal", abondant: "abondant", tres_abondant: "abondant" };
 const COULEUR_REGLES_OPTS = [
   { value: "marron",     label: "Marron",     color: C.secondaryDark },
   { value: "rouge_vif",  label: "Rouge vif",  color: C.red },
@@ -84,54 +139,32 @@ const CAILLOTS_OPTS = [
 const SPOTTING_COULEUR_OPTS = [
   { value: "rouge",  label: "Rouge",  color: C.red },
   { value: "marron", label: "Marron", color: C.secondaryDark },
+  { value: "rose",   label: "Rosé",   color: C.rose },
 ];
 const QUANTITE_GLAIRE_OPTS = [
   { value: "legere",   label: "Légère",   color: C.secondary },
   { value: "moyenne",  label: "Moyenne",  color: C.yellow },
   { value: "abondante",label: "Abondante",color: C.primary },
 ];
-
-// ── Symptômes génériques ──
-const HUMEUR_OPTS = [
-  { value: "sereine",  label: "Sereine",  color: C.sage },
-  { value: "irritable",label: "Irritable",color: C.yellow },
-  { value: "triste",   label: "Triste",   color: C.lavender },
-  { value: "anxieuse", label: "Anxieuse", color: C.red },
+// Glaire : qualité unique (traduite vers sensation + apparence pour l'algorithme)
+const GLAIRE_QUALITE_OPTS = [
+  { value: "seche",      label: "Sèche/rien",  color: C.yellow },
+  { value: "collante",   label: "Collante",    color: C.secondary },
+  { value: "cremeuse",   label: "Crémeuse",    color: C.rose },
+  { value: "humide",     label: "Humide",      color: C.primary },
+  { value: "blanc_oeuf", label: "Blanc d'œuf", color: C.sage },
 ];
-const ENERGIE_OPTS = [
-  { value: "en_forme", label: "En forme", color: C.sage },
-  { value: "normale",  label: "Normale",  color: C.yellow },
-  { value: "fatiguee", label: "Fatiguée", color: C.red },
-];
-const LIBIDO_OPTS = [
-  { value: "haute",  label: "Haute",  color: C.sage },
-  { value: "normale",label: "Normale",color: C.yellow },
-  { value: "basse",  label: "Basse",  color: C.muted },
-];
-const SOMMEIL_OPTS = [
-  { value: "bon",      label: "Bon",      color: C.sage },
-  { value: "moyen",    label: "Moyen",    color: C.yellow },
-  { value: "difficile",label: "Difficile",color: C.red },
-];
-const DIGESTION_OPTS = [
-  { value: "normale",   label: "Normale",   color: C.sage },
-  { value: "ballonnee", label: "Ballonnée", color: C.yellow },
-  { value: "douloureuse", label: "Douloureuse", color: C.red },
-];
-const PEAU_OPTS = [
-  { value: "nette",  label: "Nette",  color: C.sage },
-  { value: "grasse", label: "Grasse", color: C.yellow },
-  { value: "boutons",label: "Boutons",color: C.red },
-];
-const APPETIT_OPTS = [
-  { value: "normal", label: "Normal", color: C.sage },
-  { value: "envies", label: "Envies", color: C.yellow },
-  { value: "faible", label: "Faible", color: C.muted },
-];
-const DOULEURS_OPTS = [
-  { value: "aucune",  label: "Aucune",  color: C.sage },
-  { value: "legeres", label: "Légères", color: C.yellow },
-  { value: "fortes",  label: "Fortes",  color: C.red },
+const GLAIRE_QUALITE_MAP = {
+  seche:      ["seche",     "aucune"],
+  collante:   ["seche",     "pateuse"],
+  cremeuse:   ["humide",    "pateuse"],
+  humide:     ["humide",    "aucune"],
+  blanc_oeuf: ["lubrifiee", "fertile"],
+};
+const TEST_OVULATION_OPTS = [
+  { value: "negatif",  label: "Négatif",        color: C.muted },
+  { value: "presque",  label: "Presque positif",color: C.yellow },
+  { value: "positif",  label: "Positif",        color: C.sage },
 ];
 
 const EMPTY_FORM = {
@@ -146,59 +179,60 @@ const EMPTY_FORM = {
   colOuverture: null,
   rapport: null,
   perturbation: "",
-  // Pertes détaillées
   flux: null,
   couleurRegles: null,
   caillots: null,
   spotting: null,
-  // Symptômes
-  humeur: null,
-  energie: null,
-  libido: null,
-  sommeil: null,
-  digestion: null,
-  peau: null,
-  appetit: null,
-  douleurs: null,
-  notesLibres: "",
 };
 
 const DEFAULT_SETTINGS = {
   prenom: "",
-  darkMode: false,
+  darkMode: true,
   longueurCycleMoyenne: 28,
   longueurLutealeMoyenne: 14,
+  customComplements: [],
+  customTraitements: [],
 };
 
 // ─── STYLES GLOBAUX ─────────────────────────────────────────────────────────
 const G = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
-  html { overflow-x: hidden; }
+  html { background: var(--bg); }
   body {
     background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text-c);
     font-size: 14px; line-height: 1.5;
     overflow-x: hidden;
     -webkit-text-size-adjust: 100%;
   }
+  button { font-family: inherit; }
   :root {
     --bg: ${C.bg};
+    --sheet: ${C.bg};
     --surface: ${C.white};
     --surface-2: ${C.sand};
     --surface-3: ${C.sandDark};
     --border-c: ${C.border};
+    --chip: ${C.sand};
+    --chip-b: ${C.border};
+    --band: ${C.sand};
     --text-c: ${C.text};
     --muted-c: ${C.muted};
   }
   :root.dark {
-    --bg: #1A1410;
-    --surface: #241D17;
-    --surface-2: #2E2520;
-    --surface-3: #3A302A;
-    --border-c: #4A3D33;
-    --text-c: #F0E8DF;
-    --muted-c: #9A8878;
+    --bg: ${C.dBg};
+    --sheet: ${C.dSheet};
+    --surface: ${C.dSurface};
+    --surface-2: ${C.dSurface2};
+    --surface-3: ${C.dSurface3};
+    --border-c: ${C.dBorder};
+    --chip: ${C.dSurface2};
+    --chip-b: ${C.dChipBorder};
+    --band: ${C.dBand};
+    --text-c: ${C.dText};
+    --muted-c: ${C.dMuted};
+    color-scheme: dark;
   }
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -225,11 +259,11 @@ const G = `
   .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
   .no-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
   @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-  .anim { animation: fadeUp .35s ease both; }
-  @keyframes floatBlobA { 0%,100% { transform: translate(-6%,-4%) scale(1); } 50% { transform: translate(4%,6%) scale(1.12); } }
-  @keyframes floatBlobB { 0%,100% { transform: translate(6%,4%) scale(1.05); } 50% { transform: translate(-5%,-6%) scale(0.96); } }
-  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.015); } }
-  @keyframes ringPulse { 0%,100% { opacity: .55; } 50% { opacity: .95; } }
+  .anim { animation: fadeUp .35s ease backwards; }
+  @keyframes sheetUp { from { opacity:0; transform:translateY(36px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes floatBlobA { 0%,100% { transform: translate(-5%,-3%) scale(1); } 50% { transform: translate(4%,5%) scale(1.1); } }
+  @keyframes floatBlobB { 0%,100% { transform: translate(5%,3%) scale(1.04); } 50% { transform: translate(-4%,-5%) scale(.96); } }
+  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.012); } }
   .badge {
     display: inline-flex; align-items: center; gap: 4px;
     padding: 3px 9px; border-radius: 99px; font-size: 12px; font-weight: 500;
@@ -395,10 +429,10 @@ function gaussianProb(x, mean, std) {
 // Détermine la phase du cycle pour un jour donné (réel ou projeté),
 // à partir de la durée moyenne de cycle et du jour d'ovulation moyen.
 const PHASE_COLORS = {
-  menstruelle:  C.red,
-  folliculaire: C.primary,
-  ovulatoire:   C.sage,
-  luteale:      C.lavender,
+  menstruelle:  C.phMens,
+  folliculaire: C.phFol,
+  ovulatoire:   C.phOvu,
+  luteale:      C.phLut,
 };
 const PHASE_LABELS = {
   menstruelle:  "menstruelle",
@@ -432,6 +466,117 @@ function phaseSegments(avgLen, ovMean, dureeReglesMoy = 5) {
   ].filter(s => s.end >= s.start);
 }
 
+// ─── DATES (heure locale, jamais UTC) ────────────────────────────────────────
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const todayStr = () => ymd(new Date());
+const addDays = (s, n) => { const d = new Date(s + "T12:00:00"); d.setDate(d.getDate() + n); return ymd(d); };
+const diffDays = (a, b) => Math.round((new Date(a + "T12:00:00") - new Date(b + "T12:00:00")) / 86400000);
+const nowHHMM = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+const fmtHeure = (h) => (h && h.includes(":")) ? h.replace(":", " h ") : "—";
+const capFirst = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+const fmtDM = (s) => new Date(s + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+const fmtDMshort = (s) => new Date(s + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+const fmtTemp = (t) => t ? String(t).replace(".", ",") : "";
+
+// ─── GLAIRE : qualité unique ↔ sensation + apparence ─────────────────────────
+function glaireQualiteOf(e) {
+  if (!e) return null;
+  if (e.glaireQualite) return e.glaireQualite;
+  const s = e.glaireSensation, a = e.glaireApparence;
+  if (!s && !a) return null;
+  if (a === "fertile" || s === "lubrifiee") return "blanc_oeuf";
+  if (a === "pateuse") return s === "humide" ? "cremeuse" : "collante";
+  if (s === "humide") return "humide";
+  return "seche";
+}
+
+// ─── SYMPTÔMES : catégories (d'après l'app de référence) ─────────────────────
+const lv5 = (...l) => l;
+const SYM_CATS = [
+  { id: "douleurs", label: "Douleurs & inconforts", icon: "bandage", color: C.icBandage, sections: [
+    { key: "crampes", title: "Crampes menstruelles", type: "scale", levels: lv5("Aucune", "Légères", "Modérées", "Fortes", "Handicapantes") },
+    { key: "corps", title: "Corps", chips: ["Douleurs d'ovulation", "Douleurs anales", "Rétention d'eau", "Allergies", "Poitrine sensible", "Poitrine gonflée", "Mal de dos", "Cervicales", "Articulations", "Très chaud", "Frileuse", "Douleurs pelviennes", "Courbatures", "Tensions musculaires", "Bouffées de chaleur", "Transpiration accrue", "Grippe menstruelle", "Odeur"] },
+    { key: "tete", title: "Tête", chips: ["Auras", "Vertiges", "Maux de tête", "Migraine"] },
+  ]},
+  { id: "digestion", label: "Digestion", icon: "gut", color: C.icGut, sections: [
+    { key: "digestion", chips: ["Ballonnée", "Constipée", "Gaz", "Diarrhée", "Transit normal", "Brûlure d'estomac", "Crampes abdominales", "Nausées", "Transit accéléré"] },
+  ]},
+  { id: "humeur", label: "Humeur & social", icon: "smile", color: C.icSmile, sections: [
+    { key: "humeurPlus", title: "Les +", chips: ["Motivée", "Sereine", "Sociable", "Joyeuse", "Optimiste", "Créative", "Productive", "Confiance en soi", "Détendue", "Concentrée"] },
+    { key: "humeurNeutre", title: "Neutre", chips: ["Neutre", "Pensive", "Calme"] },
+    { key: "humeurMoins", title: "Les -", chips: ["Triste", "Sensible", "Pas productive", "Irritable", "Déconcentrée", "Anxieuse", "Agacée", "Sautes d'humeur", "En colère", "Négative", "Stressée", "Frustrée", "Blasée", "Envie d'être seule", "Coup de mou"] },
+  ]},
+  { id: "energie", label: "Énergie", icon: "bolt", color: C.icBolt, sections: [
+    { key: "energie", type: "scale", levels: lv5("Complètement KO", "Fatiguée", "Normale", "En forme", "Pleine d'énergie") },
+  ]},
+  { id: "libido", label: "Libido & vie sexuelle", icon: "heart", color: C.icHeart, sections: [
+    { key: "libido", title: "Libido", single: true, chips: ["Pas du tout envie", "En veille", "Neutre", "Réceptive", "En montée", "Très envie"] },
+    { key: "vie", title: "Vie sexuelle", chips: [
+      { value: "avec_protection", label: "Rapport protégé", root: "rapport" },
+      { value: "sans_protection", label: "Rapport non protégé", root: "rapport" },
+      { value: "inconnue", label: "Rapport · protection non renseignée", root: "rapport" },
+      "Plaisir solo", "Rapport douloureux",
+    ]},
+  ]},
+  { id: "peau", label: "Peau & cheveux", icon: "hair", color: C.icHair, sections: [
+    { key: "peau", title: "Peau", chips: ["Nouveaux boutons", "Grasse", "Sèche", "Réactive", "Belle"] },
+    { key: "cheveux", title: "Cheveux", chips: ["Gras", "Secs", "Brillants", "Perte de cheveux"] },
+  ]},
+  { id: "inhabituel", label: "Inhabituel", icon: "quest", color: C.icQuest, sections: [
+    { key: "inhabituel", chips: ["Alcool", "Maladie", "Voyage", "Décalage horaire", "Choc émotionnel", "Excès de caféine"] },
+  ]},
+  { id: "sommeil", label: "Sommeil", icon: "moon", color: C.icMoon, sections: [
+    { key: "nuit", title: "Nuit", type: "scale", levels: lv5("Horrible", "Mauvaise", "Moyenne", "Bonne", "Excellente") },
+    { key: "duree", title: "Durée", single: true, chips: ["Blanche", "Courte", "Normale", "Longue", "Très longue"] },
+    { key: "endormissement", title: "Endormissement", single: true, chips: ["Difficulté à s'endormir", "Normal", "Rapide"] },
+    { key: "reveil", title: "Réveil", chips: ["Réveils nocturnes", "Réveil difficile", "Bien reposée"] },
+  ]},
+  { id: "sport", label: "Sport", icon: "sport", color: C.icSport, sections: [
+    { key: "seance", title: "Ressenti séance", type: "scale", levels: lv5("Très facile", "Facile", "Moyen", "Difficile", "Très difficile") },
+    { key: "force", title: "Force", type: "scale", levels: ["Plus faible que d'habitude", "Normale", "Plus forte que d'habitude"] },
+    { key: "motivation", title: "Motivation", type: "scale", levels: ["Aucune envie", "Peu motivée", "Motivée", "Très motivée"] },
+  ]},
+  { id: "appetit", label: "Appétit & envies", icon: "food", color: C.icFood, sections: [
+    { key: "appetit", title: "Appétit", type: "scale", levels: lv5("Appétit coupé", "Faible", "Normal", "Gros appétit", "Tout le temps faim") },
+    { key: "envies", title: "Envies", chips: ["Sucre", "Gras", "Féculents", "Viande", "Grignottages"] },
+  ]},
+  { id: "complements", label: "Compléments", fullTitle: "Compléments alimentaires / Traitements", icon: "pill", color: C.icPill, sections: [
+    { key: "complements", title: "Compléments alimentaires", chips: ["Fer", "Magnésium", "Vitamines", "Oméga-3"], custom: "customComplements", addLabel: "Ajouter mon complément" },
+    { key: "traitements", title: "Traitements", chips: [], custom: "customTraitements", addLabel: "Ajouter mon traitement" },
+  ]},
+  { id: "notes", label: "Notes libres", icon: "note", color: C.icNote, special: "notes" },
+];
+
+const chipValue = (c) => typeof c === "string" ? c : c.value;
+const chipLabel = (c) => typeof c === "string" ? c : c.label;
+
+// Nombre de valeurs saisies dans une catégorie de symptômes
+function symCatCount(cat, e) {
+  if (!e) return 0;
+  if (cat.special === "notes") return e.notesLibres && e.notesLibres.trim() ? 1 : 0;
+  const sym = e.sym || {};
+  let n = 0;
+  cat.sections.forEach(sec => {
+    if (sec.type === "scale") { if (typeof sym[sec.key] === "number") n += 1; return; }
+    (sec.chips || []).forEach(c => { if (typeof c !== "string" && c.root && e[c.root] === c.value) n += 1; });
+    n += (sym[sec.key] || []).length;
+  });
+  return n;
+}
+const symCount = (e) => SYM_CATS.reduce((a, c) => a + symCatCount(c, e), 0);
+const symCatsFilled = (e) => SYM_CATS.filter(c => symCatCount(c, e) > 0).length;
+const sthCount = (e) => !e ? 0 :
+  (e.temperature ? 1 : 0) + (glaireQualiteOf(e) ? 1 : 0) + (e.quantiteGlaire ? 1 : 0) +
+  (e.testOvulation ? 1 : 0) + (e.colFermete ? 1 : 0) + (e.colOuverture ? 1 : 0);
+const pertesCount = (e) => !e ? 0 :
+  (e.flux ? 1 : 0) + (e.couleurRegles ? 1 : 0) + (e.caillots ? 1 : 0) + (e.spotting ? 1 : 0) + (glaireQualiteOf(e) ? 1 : 0);
+
+const hasSymptomes = (e) => symCount(e) > 0 || (e && !!e.rapport);
+const hasSymptothermie = (e) => sthCount(e) > 0;
+const hasPertes = (e) => pertesCount(e) > 0 || (e && !!e.saignement && e.saignement !== "aucun");
+const hasAnyData = (e) => !!e && (hasSymptomes(e) || hasSymptothermie(e) || hasPertes(e) || !!e.temperature);
+const flowOn = (e) => !!e && (["faible", "normal", "abondant"].includes(e.saignement) || !!e.flux);
+
 // ─── GAMIFICATION ────────────────────────────────────────────────────────────
 // Niveau basé sur le nombre total de jours renseignés (données réellement saisies)
 const NIVEAUX = [
@@ -443,10 +588,7 @@ const NIVEAUX = [
 ];
 
 function computeGamification(entries) {
-  const joursRenseignes = entries.filter(e =>
-    e.temperature || e.saignement || e.glaireSensation || e.glaireApparence ||
-    e.humeur || e.energie || e.sommeil || e.digestion || e.peau || e.appetit || e.libido
-  ).length;
+  const joursRenseignes = entries.filter(hasAnyData).length;
   const xp = joursRenseignes * 5;
   let niveauIdx = 0;
   for (let i = 0; i < NIVEAUX.length; i++) {
@@ -466,6 +608,49 @@ function computeGamification(entries) {
   };
 }
 
+// Série de jours consécutifs renseignés (jusqu'à aujourd'hui, ou hier si aujourd'hui est vide)
+function computeStreak(entries) {
+  const filled = new Set(entries.filter(hasAnyData).map(e => e.date));
+  let d = todayStr();
+  if (!filled.has(d)) d = addDays(d, -1);
+  let n = 0;
+  while (filled.has(d)) { n += 1; d = addDays(d, -1); }
+  return n;
+}
+
+// ─── STATS DE CYCLE (partagées Accueil / Courbe / Calendrier) ────────────────
+function useCycleStats(entries, cycles) {
+  return useMemo(() => {
+    const currentCycleNum = Math.max(1, ...entries.map(e => e.cycleNum || 1));
+    const currentEntries = entries.filter(e => e.cycleNum === currentCycleNum).sort((a, b) => a.date.localeCompare(b.date));
+    const cycleStart = currentEntries[0]?.date || todayStr();
+    // Durée d'un cycle = écart entre deux débuts de cycle (robuste si les derniers jours ne sont pas saisis)
+    const starts = cycles.filter(c => c.dateDebut).map(c => c.dateDebut).sort();
+    const lens = starts.slice(1).map((d, i) => diffDays(d, starts[i])).filter(n => n >= 18 && n <= 60).slice(-12);
+    const avgLen = lens.length ? Math.min(45, Math.max(21, Math.round(lens.reduce((a, b) => a + b, 0) / lens.length))) : 28;
+
+    const groups = {};
+    entries.forEach(e => { (groups[e.cycleNum] = groups[e.cycleNum] || []).push(e); });
+    const past = Object.entries(groups).filter(([n]) => parseInt(n) < currentCycleNum);
+    const ovStats = computeOvulationStats(past.map(([, ents]) => ({ entries: ents })));
+    const ovMean = ovStats.mean || 14;
+
+    // Durée moyenne des règles : jours consécutifs avec flux depuis le J1 de chaque cycle passé
+    const durs = [];
+    past.forEach(([, ents]) => {
+      const sorted = ents.slice().sort((a, b) => a.date.localeCompare(b.date));
+      const byDate = {}; sorted.forEach(e => { byDate[e.date] = e; });
+      let n = 0;
+      while (flowOn(byDate[addDays(sorted[0].date, n)])) n += 1;
+      if (n >= 2 && n <= 10) durs.push(n);
+    });
+    const dureeRegles = durs.length ? Math.min(8, Math.max(2, Math.round(durs.reduce((a, b) => a + b, 0) / durs.length))) : 5;
+
+    const todayCycleDay = Math.max(1, diffDays(todayStr(), cycleStart) + 1);
+    return { currentCycleNum, currentEntries, cycleStart, avgLen, ovMean, ovStats, dureeRegles, todayCycleDay };
+  }, [entries, cycles]);
+}
+
 // Calcule un domaine d'axe Y propre pour les températures :
 // arrondi au 0.1, min 36.5, ticks tous les 0.1
 function tempAxisProps(data) {
@@ -483,19 +668,6 @@ function tempAxisProps(data) {
   return { domain: [lo, hi], ticks };
 }
 
-// Une entrée a des données "Symptômes" / "Symptothermie" / "Pertes" ?
-function hasSymptomes(e) {
-  if (!e) return false;
-  return !!(e.humeur || e.energie || e.libido || e.sommeil || e.digestion || e.peau || e.appetit || e.douleurs || e.notesLibres);
-}
-function hasSymptothermie(e) {
-  if (!e) return false;
-  return !!(e.temperature || e.glaireSensation || e.glaireApparence || e.colFermete || e.colOuverture);
-}
-function hasPertes(e) {
-  if (!e) return false;
-  return !!(e.saignement || e.flux || e.spotting || e.glaireApparence);
-}
 
 function exportCSV(data, filename, columns) {
   const header = columns.map(c => c.label).join(",");
@@ -817,7 +989,7 @@ function EntryModal({ open, onClose, onSave, editEntry, cycleNum }) {
 
   useEffect(() => {
     if (editEntry) setForm({ ...EMPTY_FORM, ...editEntry });
-    else setForm({ ...EMPTY_FORM, date: new Date().toISOString().slice(0, 10) });
+    else setForm({ ...EMPTY_FORM, date: todayStr() });
   }, [editEntry, open]);
 
   const upd = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -905,216 +1077,586 @@ function EntryModal({ open, onClose, onSave, editEntry, cycleNum }) {
   );
 }
 
-// ─── MODAL SYMPTÔMES ─────────────────────────────────────────────────────────
-// Petite feuille de sélection rapide : tap sur une option = sauvegarde + fermeture immédiate.
-// Volontairement minimale (jamais de scroll) pour rester rapide à utiliser.
-function QuickPicker({ open, onClose, title, opts, value, onPick }) {
+// ─── ICÔNES ──────────────────────────────────────────────────────────────────
+function Ico({ name, size = 22, color = "currentColor", sw = 1.8 }) {
+  const p = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: color, strokeWidth: sw, strokeLinecap: "round", strokeLinejoin: "round", style: { display: "block", flexShrink: 0 } };
+  switch (name) {
+    case "edit":
+      return <svg {...p}><path d="M11 4H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-4" /><path d="M17.6 3.6a2.1 2.1 0 0 1 3 3L12 15.2 8 16l.8-4z" /></svg>;
+    case "thermo":
+      return <svg {...p}><path d="M10 14.3V5a2 2 0 1 1 4 0v9.3a4 4 0 1 1-4 0z" /><circle cx="12" cy="17" r="1.3" fill={color} stroke="none" /></svg>;
+    case "drop":
+      return <svg {...p}><path d="M12 3.2c3 3.8 6.2 7.6 6.2 11.3a6.2 6.2 0 1 1-12.4 0c0-3.7 3.2-7.5 6.2-11.3z" /></svg>;
+    case "dropFill":
+      return <svg {...p} fill={color} stroke="none"><path d="M12 2.8c3.3 4.2 6.6 8 6.6 11.8a6.6 6.6 0 1 1-13.2 0c0-3.8 3.3-7.6 6.6-11.8z" /></svg>;
+    case "clock":
+      return <svg {...p}><circle cx="12" cy="12" r="8.6" /><path d="M12 7.4V12l3.2 2" /></svg>;
+    case "calendarDots":
+      return <svg {...p}><rect x="3.5" y="5" width="17" height="15.5" rx="3.2" /><path d="M8 3v4M16 3v4" /><circle cx="8" cy="12" r=".9" fill={color} stroke="none" /><circle cx="12" cy="12" r=".9" fill={color} stroke="none" /><circle cx="16" cy="12" r=".9" fill={color} stroke="none" /><circle cx="8" cy="16" r=".9" fill={color} stroke="none" /><circle cx="12" cy="16" r=".9" fill={color} stroke="none" /></svg>;
+    case "chevL": return <svg {...p}><path d="M14.5 5.5 8 12l6.5 6.5" /></svg>;
+    case "chevR": return <svg {...p}><path d="M9.5 5.5 16 12l-6.5 6.5" /></svg>;
+    case "chevD": return <svg {...p}><path d="M5.5 9.5 12 16l6.5-6.5" /></svg>;
+    case "info": return <svg {...p} strokeWidth={1.6}><path d="M12 11v5.2" /><circle cx="12" cy="7.6" r=".6" fill={color} /></svg>;
+    case "close": return <svg {...p}><path d="M6 6l12 12M18 6 6 18" /></svg>;
+    case "plus": return <svg {...p}><path d="M12 5v14M5 12h14" /></svg>;
+    case "chart": return <svg {...p}><path d="M4.5 20V11M10.2 20V4M15.9 20v-6.5M21.5 20H2.5" /></svg>;
+    case "history":
+      return <svg {...p}><path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5" /><path d="M4.2 4.8v4h4" /><path d="M12 8.2v4.3l3 2" /></svg>;
+    case "cycle":
+      return <svg {...p}><path d="M4 16.5 9 11l3.5 3.5L20 6.5" /><path d="M15 6.5h5v5" /></svg>;
+    case "more":
+      return <svg {...p}><circle cx="6" cy="12" r="1.3" fill={color} stroke="none" /><circle cx="12" cy="12" r="1.3" fill={color} stroke="none" /><circle cx="18" cy="12" r="1.3" fill={color} stroke="none" /></svg>;
+    case "sparkle":
+      return <svg {...p}><path d="M12 3l1.7 5 5 1.7-5 1.7-1.7 5-1.7-5-5-1.7 5-1.7 2-5z" /></svg>;
+    case "gear":
+      return <svg {...p}><circle cx="12" cy="12" r="3" /><path d="M12 3.5v2.3M12 18.2v2.3M4.6 7.5l2 1.2M17.4 15.3l2 1.2M3.5 12h2.3M18.2 12h2.3M4.6 16.5l2-1.2M17.4 8.7l2-1.2" /></svg>;
+    case "save":
+      return <svg {...p}><path d="M12 3.5v10.5M8 10.5l4 4 4-4" /><path d="M5 15.5v3.3A2.2 2.2 0 0 0 7.2 21h9.6a2.2 2.2 0 0 0 2.2-2.2v-3.3" /></svg>;
+    default: return null;
+  }
+}
+
+// Icônes colorées des catégories (pleines / contours, comme la référence)
+function CatIcon({ name, size = 34, color }) {
+  const s = { width: size, height: size, viewBox: "0 0 24 24", style: { display: "block", flexShrink: 0 } };
+  const st = { fill: "none", stroke: color, strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" };
+  switch (name) {
+    case "bandage":
+      return <svg {...s}><g transform="rotate(45 12 12)"><rect x="1.5" y="8" width="21" height="8" rx="4" fill={color} /><rect x="8" y="1.5" width="8" height="21" rx="4" fill={color} /></g><rect x="8.8" y="8.8" width="6.4" height="6.4" rx="1.6" transform="rotate(45 12 12)" fill="none" stroke={C.white} strokeOpacity=".65" strokeWidth="1.2" /></svg>;
+    case "gut":
+      return <svg {...s}><path d="M9 4.5h8a3.4 3.4 0 0 1 0 6.8H9.5a3.4 3.4 0 0 0 0 6.8H17" fill="none" stroke={color} strokeWidth="3.4" strokeLinecap="round" /><path d="M3.2 8.2l2 .9M3.2 12.4h2.2M3.2 16.4l2-.9" {...st} strokeWidth="1.3" /></svg>;
+    case "smile":
+      return <svg {...s}><circle cx="12" cy="12" r="9.2" {...st} /><circle cx="9" cy="10" r=".95" fill={color} /><circle cx="15" cy="10" r=".95" fill={color} /><path d="M8 14.2c1.1 1.8 2.5 2.6 4 2.6s2.9-.8 4-2.6" {...st} /></svg>;
+    case "bolt":
+      return <svg {...s}><path d="M13.6 2 5 13.7h5.6L9.8 22 19 9.8h-5.7z" fill={color} /></svg>;
+    case "heart":
+      return <svg {...s}><path d="M12 20.5S3.5 15.3 3.5 9.2A4.7 4.7 0 0 1 12 6.6a4.7 4.7 0 0 1 8.5 2.6c0 6.1-8.5 11.3-8.5 11.3z" {...st} /></svg>;
+    case "hair":
+      return <svg {...s}><path d="M4.8 21c-.2-5 .3-9 1.6-11.6a5.5 5.5 0 0 1 9.8 0c1.3 2.6 1.8 6.6 1.6 11.6" {...st} /><path d="M7.8 20c0-4 .4-6.6 1.3-8.2a3 3 0 0 1 5.4 0c.9 1.6 1.3 4.2 1.3 8.2" {...st} /><path d="M20 2.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" fill={color} /></svg>;
+    case "quest":
+      return <svg {...s}><path d="M8.6 9a3.4 3.4 0 1 1 5.1 2.9c-1 .6-1.7 1.3-1.7 2.6" {...st} /><circle cx="12" cy="18.6" r="1" fill={color} /></svg>;
+    case "moon":
+      return <svg {...s}><path d="M20.5 14.6A8.8 8.8 0 1 1 9.4 3.5a7.3 7.3 0 0 0 11.1 11.1z" fill={color} /><circle cx="8" cy="11" r=".9" fill={C.white} opacity=".75" /><circle cx="10.6" cy="16.2" r=".7" fill={C.white} opacity=".75" /><circle cx="6.3" cy="14.6" r=".6" fill={C.white} opacity=".75" /></svg>;
+    case "sport":
+      return <svg {...s}><g transform="rotate(-35 12 12)" {...st} strokeWidth="1.8"><rect x="1.8" y="7.2" width="5.2" height="9.6" rx="1.9" /><rect x="17" y="7.2" width="5.2" height="9.6" rx="1.9" /><path d="M7 12h10M3.8 9.6v4.8M20.2 9.6v4.8" /></g></svg>;
+    case "food":
+      return <svg {...s}><circle cx="13.2" cy="13" r="5" {...st} /><circle cx="13.2" cy="13" r="2.5" {...st} /><path d="M4.6 4v5.2a2 2 0 0 0 4 0V4M6.6 4v16" {...st} /><path d="M20.8 4c-1.8 1.3-2.7 3.4-2.7 5.8v.2h2.7V20" {...st} /></svg>;
+    case "pill":
+      return <svg {...s}><g transform="rotate(-45 12 12)" {...st}><rect x="2.5" y="6.8" width="19" height="10.4" rx="5.2" /><path d="M12 6.8v10.4" /></g></svg>;
+    case "note":
+      return <svg {...s}><path d="M11 4H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-4" {...st} /><path d="M17.6 3.6a2.1 2.1 0 0 1 3 3L12 15.2 8 16l.8-4z" {...st} /><path d="M8 8h3M8 11.5h1.5" {...st} strokeWidth="1.4" /></svg>;
+    case "dropFill":
+      return <svg {...s}><path d="M12 2.8c3.3 4.2 6.6 8 6.6 11.8a6.6 6.6 0 1 1-13.2 0c0-3.8 3.3-7.6 6.6-11.8z" fill={color} /></svg>;
+    case "spot":
+      return <svg {...s}><circle cx="6.5" cy="14.5" r="1.9" fill={color} /><circle cx="12.6" cy="16" r="2.5" fill={color} /><circle cx="10.4" cy="7.6" r="1.4" fill={color} /></svg>;
+    default: return null;
+  }
+}
+
+// ─── PRIMITIVES DE SAISIE (feuilles plein écran) ─────────────────────────────
+const SHEET_TOP = "calc(env(safe-area-inset-top, 0px) + 10px)";
+const SHEET_HEAD = 112;
+const SHEET_SIDE = { left: "max(0px, calc(50vw - 240px))", width: "min(100vw, 480px)" };
+
+// iOS Safari : trois éléments position:fixed indépendants (fond, en-tête, zone scrollable)
+function Sheet({ open, onClose, head, children, scrollKey }) {
+  const scrollRef = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [scrollKey, open]);
   if (!open) return null;
   return (
-    <div onClick={onClose} style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,.5)", zIndex: 1600,
-      display: "flex", alignItems: "flex-end", justifyContent: "center",
-    }}>
-      <div onClick={e => e.stopPropagation()} style={{
-        width: "100%", maxWidth: 440, background: "var(--surface)", borderRadius: "22px 22px 0 0",
-        padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 22px)",
-        boxShadow: "0 -8px 40px rgba(0,0,0,.18)",
-      }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-          <div style={{ width: 34, height: 4, borderRadius: 99, background: "var(--border-c)" }} />
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: C.scrim, zIndex: 1400 }} />
+      <div style={{
+        position: "fixed", top: SHEET_TOP, ...SHEET_SIDE, height: SHEET_HEAD, zIndex: 1402,
+        background: "var(--sheet)", borderRadius: "34px 34px 0 0", animation: "sheetUp .3s ease both",
+      }}>{head}</div>
+      <div ref={scrollRef} className="no-scrollbar" style={{
+        position: "fixed", top: `calc(${SHEET_TOP} + ${SHEET_HEAD}px)`, bottom: 0, ...SHEET_SIDE, zIndex: 1401,
+        background: "var(--sheet)", overflowY: "scroll", WebkitOverflowScrolling: "touch",
+        padding: "4px 18px calc(env(safe-area-inset-bottom, 0px) + 48px)", animation: "sheetUp .3s ease both",
+      }}>{children}</div>
+    </>
+  );
+}
+
+const roundBtn = {
+  width: 36, height: 36, borderRadius: "50%", border: "1px solid var(--border-c)", background: "var(--surface)",
+  display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, padding: 0,
+  color: "var(--text-c)",
+};
+
+function SheetHead({ dateLabel, title, sub, onDone, onBack, icon, iconColor, onInfo }) {
+  return (
+    <div>
+      <div style={{ textAlign: "center", color: C.primaryLight, fontSize: 14.5, fontWeight: 500, paddingTop: 20, letterSpacing: ".01em" }}>{dateLabel}</div>
+      {onBack ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px 18px 0" }}>
+          <button onClick={onBack} aria-label="Retour" style={roundBtn}><Ico name="chevL" size={18} color={C.primaryLight} sw={2.6} /></button>
+          {icon && <CatIcon name={icon} size={38} color={iconColor} />}
+          <div style={{ flex: 1, fontSize: 21, fontWeight: 600, lineHeight: 1.2, minWidth: 0 }}>{title}</div>
+          {onInfo && <button onClick={onInfo} aria-label="Informations" style={{ ...roundBtn, width: 30, height: 30 }}><Ico name="info" size={17} color={C.dMuted} /></button>}
         </div>
-        <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 14 }}>{title}</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 9 }}>
-          {value && (
-            <button onClick={() => onPick(null)} style={{
-              padding: "11px 16px", borderRadius: 99, border: "1px solid var(--border-c)",
-              background: "transparent", color: "var(--muted-c)", fontSize: 14, cursor: "pointer",
-            }}>✕ Effacer</button>
-          )}
-          {opts.map(o => {
-            const active = value === o.value;
-            return (
-              <button key={o.value} onClick={() => onPick(o.value)} style={{
-                padding: "11px 18px", borderRadius: 99, border: `1.5px solid ${active ? o.color : "var(--border-c)"}`,
-                background: active ? o.color + "22" : "var(--surface-2)", color: active ? o.color : "var(--text-c)",
-                fontSize: 14, fontWeight: active ? 600 : 500, cursor: "pointer", transition: "all .12s",
-              }}>{o.label}</button>
-            );
-          })}
+      ) : (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 18px 0" }}>
+          <div>
+            <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.15, letterSpacing: "-.01em" }}>{title}</div>
+            <div style={{ color: C.primaryLight, fontSize: 15, marginTop: 2 }}>{sub}</div>
+          </div>
+          <button onClick={onDone} style={{
+            height: 40, padding: "0 22px", borderRadius: 20, border: "none", background: C.cta, color: C.ctaText,
+            fontSize: 15, fontWeight: 600, cursor: "pointer",
+          }}>Terminé</button>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
-// Carte compacte représentant une catégorie dans une grille — tap = ouvre le QuickPicker
-function CategoryCard({ icon, label, value, opts, onClick }) {
-  const filled = !!value;
-  const color = filled ? optColor(opts, value) : null;
+function Panel({ title, right, children }) {
+  return (
+    <div style={{
+      background: "var(--surface)", border: "1px solid var(--border-c)", borderRadius: 28,
+      padding: "16px 14px 18px", marginBottom: 16,
+    }}>
+      {(title || right) && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, minHeight: 24 }}>
+          <div style={{ fontSize: 16.5, fontWeight: 600, display: "flex", alignItems: "center", gap: 12 }}>{title}</div>
+          {right}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function Chip({ label, active, onClick }) {
   return (
     <button onClick={onClick} style={{
-      display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3,
-      padding: "12px 13px", borderRadius: 14, border: "1px solid var(--border-c)",
-      background: filled ? color + "15" : "var(--surface-2)",
-      cursor: "pointer", textAlign: "left", minHeight: 74,
+      height: 42, padding: "0 16px", borderRadius: 99, cursor: "pointer",
+      border: `1px solid ${active ? "transparent" : "var(--chip-b)"}`,
+      background: active ? C.cta : "var(--chip)", color: active ? C.ctaText : "var(--text-c)",
+      fontSize: 14.5, fontWeight: active ? 600 : 500, transition: "background .15s, color .15s",
+      display: "inline-flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
+    }}>{label}</button>
+  );
+}
+
+function ChipWrap({ children }) {
+  return <div style={{ display: "flex", flexWrap: "wrap", gap: 9 }}>{children}</div>;
+}
+
+// Curseur à N crans (« Choisis un niveau »)
+function ScaleField({ levels, value, onChange }) {
+  const n = levels.length;
+  const sel = typeof value === "number" && value >= 0 && value < n;
+  const labelStyle = { position: "absolute", top: 40, fontSize: 13, color: "var(--muted-c)", textAlign: "center", width: 104, lineHeight: 1.25 };
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: 34 }}>
+        <span style={{
+          display: "inline-flex", alignItems: "center", height: 34, padding: "0 15px", borderRadius: 99,
+          fontSize: 14.5, fontWeight: 600,
+          background: sel ? C.cta : "var(--chip)", color: sel ? C.ctaText : "var(--text-c)",
+          border: `1px solid ${sel ? "transparent" : "var(--chip-b)"}`,
+        }}>{sel ? levels[value] : "Choisis un niveau"}</span>
+        {sel && (
+          <button onClick={() => onChange(null)} aria-label="Effacer" style={{ background: "none", border: "none", padding: "6px 12px", color: "var(--muted-c)", cursor: "pointer" }}>
+            <Ico name="close" size={17} />
+          </button>
+        )}
+      </div>
+      <div style={{ position: "relative", margin: "18px 30px 0", height: 36 }}>
+        <div style={{ position: "absolute", left: 18, right: 18, top: 17, height: 2, background: C.wine, borderRadius: 2 }} />
+        <div style={{ position: "absolute", inset: 0, display: "flex", justifyContent: "space-between" }}>
+          {levels.map((lab, i) => {
+            const on = sel && value === i;
+            return (
+              <button key={i} onClick={() => onChange(on ? null : i)} aria-label={lab} style={{
+                width: 36, height: 36, background: "none", border: "none", padding: 0, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <span style={{
+                  width: on ? 24 : 9, height: on ? 24 : 9, borderRadius: "50%", boxSizing: "border-box",
+                  border: `${on ? 2 : 1.6}px solid ${on ? C.cta : C.wineEdge}`,
+                  background: on ? "transparent" : C.wineDot,
+                  boxShadow: on ? `0 0 14px ${C.cta}66` : "none",
+                  display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s",
+                }}>{on && <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.cta }} />}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ ...labelStyle, left: 18, transform: "translateX(-50%)" }}>{levels[0]}</div>
+        <div style={{ ...labelStyle, right: 18, transform: "translateX(50%)" }}>{levels[n - 1]}</div>
+      </div>
+      <div style={{ height: 40 }} />
+    </div>
+  );
+}
+
+// Tuile de catégorie (grille 2 colonnes)
+function CatTile({ icon, color, label, summary, filled, onClick, wide }) {
+  return (
+    <button onClick={onClick} style={{
+      gridColumn: wide ? "1 / -1" : undefined, height: 127, borderRadius: 27, cursor: "pointer",
+      border: `1px solid ${filled ? C.cta + "66" : "var(--border-c)"}`,
+      background: filled ? C.cta + "1f" : "var(--surface)",
+      display: "flex", alignItems: "center", gap: 12, padding: "0 12px 0 16px", textAlign: "left",
+      color: "var(--text-c)", overflow: "hidden",
     }}>
-      <span style={{ fontSize: 17 }}>{icon}</span>
-      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-c)", textTransform: "uppercase", letterSpacing: ".03em" }}>{label}</span>
-      <span style={{ fontSize: 12.5, fontWeight: 600, color: filled ? color : "var(--muted-c)" }}>
-        {filled ? optLabel(opts, value) : "—"}
+      <span style={{ width: 38, display: "flex", justifyContent: "center", flexShrink: 0 }}>
+        <CatIcon name={icon} size={wide ? 34 : 36} color={color} />
+      </span>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 15, fontWeight: 600, lineHeight: 1.25 }}>{label}</span>
+        {summary && <span style={{ display: "block", fontSize: 13, color: C.primaryLight, marginTop: 4, lineHeight: 1.3 }}>{summary}</span>}
       </span>
     </button>
   );
 }
 
-// ─── MODAL SYMPTÔMES (grille compacte, tient sur un écran) ───────────────────
-function SymptomesModal({ open, onClose, onSave, entry, date }) {
-  const [form, setForm] = useState({});
-  const [picker, setPicker] = useState(null);
-  useEffect(() => { if (open) setForm(entry || {}); }, [open, entry]);
-
-  const categories = [
-    { key: "humeur",   label: "Humeur",   icon: "🙂", opts: HUMEUR_OPTS },
-    { key: "energie",  label: "Énergie",  icon: "⚡", opts: ENERGIE_OPTS },
-    { key: "libido",   label: "Libido",   icon: "💗", opts: LIBIDO_OPTS },
-    { key: "rapport",  label: "Rapport",  icon: "💞", opts: RAPPORT_OPTS },
-    { key: "sommeil",  label: "Sommeil",  icon: "🌙", opts: SOMMEIL_OPTS },
-    { key: "digestion",label: "Digestion",icon: "🍃", opts: DIGESTION_OPTS },
-    { key: "peau",     label: "Peau",     icon: "✨", opts: PEAU_OPTS },
-    { key: "appetit",  label: "Appétit",  icon: "🍽️", opts: APPETIT_OPTS },
-    { key: "douleurs", label: "Douleurs", icon: "🩹", opts: DOULEURS_OPTS },
-  ];
-  const filledCount = categories.filter(c => form[c.key]).length;
-
-  const pick = (key, val) => {
-    const updated = { ...form, [key]: val };
-    setForm(updated);
-    onSave({ ...(entry || {}), ...updated, date, id: entry?.id || `sym_${date}_${Date.now()}` });
-    setPicker(null);
-  };
-
-  const activeCategory = categories.find(c => c.key === picker);
-
+function InfoSheet({ open, onClose, title, children }) {
+  if (!open) return null;
   return (
-    <Modal open={open} onClose={onClose} title="Symptômes" subtitle={`${filledCount}/${categories.length} renseignés · ${fmt(date)}`}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginBottom: 16 }}>
-        {categories.map(c => (
-          <CategoryCard key={c.key} icon={c.icon} label={c.label} value={form[c.key]} opts={c.opts}
-            onClick={() => setPicker(c.key)} />
-        ))}
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: C.scrim, zIndex: 1600, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: "100%", maxWidth: 480, background: "var(--sheet)", border: "1px solid var(--border-c)", borderBottom: "none",
+        borderRadius: "28px 28px 0 0", padding: "22px 22px calc(env(safe-area-inset-bottom, 0px) + 28px)", animation: "sheetUp .25s ease both",
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ fontSize: 19, fontWeight: 700 }}>{title}</div>
+          <button onClick={onClose} aria-label="Fermer" style={{ ...roundBtn, width: 32, height: 32 }}><Ico name="close" size={16} /></button>
+        </div>
+        <div style={{ fontSize: 14.5, lineHeight: 1.6, color: "var(--muted-c)" }}>{children}</div>
       </div>
-
-      <Field label="Notes libres">
-        <textarea placeholder="Alcool, stress, nuit agitée, voyage, maladie…" value={form.notesLibres || ""}
-          onChange={e => {
-            const v = e.target.value;
-            setForm(f => ({ ...f, notesLibres: v }));
-          }}
-          onBlur={() => onSave({ ...(entry || {}), ...form, date, id: entry?.id || `sym_${date}_${Date.now()}` })}
-          style={{ minHeight: 60 }} />
-      </Field>
-
-      {activeCategory && (
-        <QuickPicker open={!!picker} onClose={() => setPicker(null)} title={activeCategory.label}
-          opts={activeCategory.opts} value={form[activeCategory.key]}
-          onPick={(v) => pick(activeCategory.key, v)} />
-      )}
-    </Modal>
+    </div>
   );
 }
 
-// ─── MODAL SYMPTOTHERMIE (grille compacte) ───────────────────────────────────
-function SymptothermieModal({ open, onClose, onSave, entry, date }) {
+// État d'un formulaire de saisie : enregistre à chaque modification, id stable
+function useEntryForm(open, entry, date, onSave) {
+  const formRef = useRef({});
+  const idRef = useRef(null);
   const [form, setForm] = useState({});
-  const [picker, setPicker] = useState(null);
-  useEffect(() => { if (open) setForm(entry || {}); }, [open, entry]);
-
-  const categories = [
-    { key: "glaireSensation", label: "Sensation", icon: "💧", opts: SENSATION_OPTS },
-    { key: "glaireApparence", label: "Apparence",  icon: "👁️", opts: APPARENCE_OPTS },
-    { key: "quantiteGlaire",  label: "Quantité",   icon: "📏", opts: QUANTITE_GLAIRE_OPTS },
-    { key: "colFermete",      label: "Fermeté col",icon: "⬤", opts: FERMETE_OPTS },
-    { key: "colOuverture",    label: "Ouverture col", icon: "◯", opts: OUVERTURE_OPTS },
-  ];
-
-  const saveAll = (patch) => {
-    const updated = { ...form, ...patch };
-    setForm(updated);
-    onSave({ ...(entry || {}), ...updated, date, id: entry?.id || `sth_${date}_${Date.now()}` });
+  useEffect(() => {
+    if (!open) return;
+    formRef.current = entry ? { ...entry } : {};
+    idRef.current = entry?.id || `e_${date}_${Date.now()}`;
+    setForm(formRef.current);
+  }, [open, date]);
+  const patch = (p) => {
+    formRef.current = { ...formRef.current, ...p };
+    setForm(formRef.current);
+    onSave({ ...formRef.current, date, id: idRef.current });
   };
-  const pick = (key, val) => { saveAll({ [key]: val }); setPicker(null); };
-  const activeCategory = categories.find(c => c.key === picker);
+  return { form, patch, formRef };
+}
+
+// ─── FEUILLE SYMPTÔMES ───────────────────────────────────────────────────────
+function SymptomesSheet({ open, onClose, onSave, entry, date, dateLabel, settings, onUpdateSettings }) {
+  const { form, patch, formRef } = useEntryForm(open, entry, date, onSave);
+  const [catId, setCatId] = useState(null);
+  const [note, setNote] = useState("");
+  const [adding, setAdding] = useState(null);
+  const [draft, setDraft] = useState("");
+  useEffect(() => { if (open) { setCatId(null); setNote(entry?.notesLibres || ""); setAdding(null); setDraft(""); } }, [open, date]);
+
+  const sym = form.sym || {};
+  const cat = SYM_CATS.find(c => c.id === catId);
+
+  const setSym = (key, value) => {
+    const next = { ...(formRef.current.sym || {}) };
+    if (value == null || (Array.isArray(value) && !value.length)) delete next[key]; else next[key] = value;
+    const p = { sym: next };
+    if (key === "inhabituel") p.perturbation = (value || []).join(", ");
+    patch(p);
+  };
+  const toggle = (sec, item) => {
+    if (typeof item !== "string" && item.root) {
+      patch({ [item.root]: formRef.current[item.root] === item.value ? null : item.value });
+      return;
+    }
+    const cur = formRef.current.sym?.[sec.key] || [];
+    const has = cur.includes(item);
+    setSym(sec.key, sec.single ? (has ? [] : [item]) : (has ? cur.filter(x => x !== item) : [...cur, item]));
+  };
+  const isOn = (sec, item) => (typeof item !== "string" && item.root)
+    ? form[item.root] === item.value
+    : (sym[sec.key] || []).includes(item);
+
+  const commitNote = () => {
+    if ((formRef.current.notesLibres || "") !== note) patch({ notesLibres: note });
+  };
+  const back = () => { if (cat?.special === "notes") commitNote(); setCatId(null); setAdding(null); };
+  const done = () => { if (cat?.special === "notes") commitNote(); onClose(); };
+
+  const addCustom = (sec) => {
+    const v = draft.trim();
+    if (!v) { setAdding(null); return; }
+    const list = settings[sec.custom] || [];
+    if (!list.includes(v) && !sec.chips.includes(v)) onUpdateSettings({ [sec.custom]: [...list, v] });
+    const cur = formRef.current.sym?.[sec.key] || [];
+    if (!cur.includes(v)) setSym(sec.key, [...cur, v]);
+    setDraft(""); setAdding(null);
+  };
+
+  const head = cat ? (
+    <SheetHead dateLabel={dateLabel} title={cat.fullTitle || cat.label} icon={cat.special === "notes" ? null : cat.icon}
+      iconColor={cat.color} onBack={back} />
+  ) : (
+    <SheetHead dateLabel={dateLabel} title="Symptômes" sub={`${symCatsFilled(form)}/${SYM_CATS.length} renseignés`} onDone={done} />
+  );
 
   return (
-    <Modal open={open} onClose={onClose} title="Symptothermie" subtitle={fmt(date)}>
-      <div className="form-grid" style={{ marginBottom: 16 }}>
-        <Field label="Heure de prise">
-          <input type="text" placeholder="ex: 7h00" value={form.heure || ""}
-            onChange={e => setForm(f => ({ ...f, heure: e.target.value }))}
-            onBlur={() => saveAll({})} />
-        </Field>
-        <Field label="Température (°C)">
-          <input type="number" step="0.01" min="35" max="39" placeholder="ex: 36.80"
-            value={form.temperature || ""}
-            onChange={e => setForm(f => ({ ...f, temperature: e.target.value ? parseFloat(e.target.value) : "" }))}
-            onBlur={() => saveAll({})} />
-        </Field>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-        {categories.map(c => (
-          <CategoryCard key={c.key} icon={c.icon} label={c.label} value={form[c.key]} opts={c.opts}
-            onClick={() => setPicker(c.key)} />
-        ))}
-      </div>
-
-      {activeCategory && (
-        <QuickPicker open={!!picker} onClose={() => setPicker(null)} title={activeCategory.label}
-          opts={activeCategory.opts} value={form[activeCategory.key]}
-          onPick={(v) => pick(activeCategory.key, v)} />
+    <Sheet open={open} onClose={done} head={head} scrollKey={catId}>
+      {!cat && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {SYM_CATS.map(c => (
+            <CatTile key={c.id} icon={c.icon} color={c.color} label={c.label}
+              filled={symCatCount(c, form) > 0} onClick={() => setCatId(c.id)} />
+          ))}
+        </div>
       )}
-    </Modal>
+
+      {cat && cat.special === "notes" && (
+        <div>
+          <textarea value={note} maxLength={1000} placeholder="Écrire une note..."
+            onChange={e => setNote(e.target.value)} onBlur={commitNote}
+            style={{ height: 160, minHeight: 160, resize: "none", borderRadius: 28, padding: "20px 18px", fontSize: 16, lineHeight: 1.5, background: "var(--surface)" }} />
+          <div style={{ textAlign: "right", color: "var(--muted-c)", fontSize: 15, padding: "10px 4px 0" }}>{note.length}/1000</div>
+        </div>
+      )}
+
+      {cat && !cat.special && cat.sections.map(sec => {
+        const items = sec.custom ? [...sec.chips, ...(settings[sec.custom] || [])] : sec.chips;
+        return (
+          <Panel key={sec.key} title={sec.title}>
+            {sec.type === "scale" ? (
+              <ScaleField levels={sec.levels} value={typeof sym[sec.key] === "number" ? sym[sec.key] : null} onChange={v => setSym(sec.key, v)} />
+            ) : (
+              <ChipWrap>
+                {items.map(item => (
+                  <Chip key={chipValue(item)} label={chipLabel(item)} active={isOn(sec, item)} onClick={() => toggle(sec, item)} />
+                ))}
+                {sec.custom && adding !== sec.key && (
+                  <Chip label={`+  ${sec.addLabel}`} onClick={() => { setAdding(sec.key); setDraft(""); }} />
+                )}
+                {sec.custom && adding === sec.key && (
+                  <div style={{ display: "flex", gap: 8, width: "100%" }}>
+                    <input autoFocus value={draft} onChange={e => setDraft(e.target.value)} maxLength={40}
+                      onKeyDown={e => { if (e.key === "Enter") addCustom(sec); }} placeholder="Nom"
+                      style={{ borderRadius: 99, height: 42, padding: "0 16px", background: "var(--chip)", borderColor: "var(--chip-b)" }} />
+                    <button onClick={() => addCustom(sec)} style={{ height: 42, padding: "0 18px", borderRadius: 99, border: "none", background: C.cta, color: C.ctaText, fontWeight: 600, fontSize: 14.5, cursor: "pointer" }}>Ajouter</button>
+                  </div>
+                )}
+              </ChipWrap>
+            )}
+          </Panel>
+        );
+      })}
+    </Sheet>
   );
 }
 
-// ─── MODAL PERTES (grille compacte) ──────────────────────────────────────────
-function PertesModal({ open, onClose, onSave, entry, date }) {
-  const [form, setForm] = useState({});
-  const [picker, setPicker] = useState(null);
-  useEffect(() => { if (open) setForm(entry || {}); }, [open, entry]);
+// ─── FEUILLE SYMPTOTHERMIE ───────────────────────────────────────────────────
+function SymptothermieSheet({ open, onClose, onSave, entry, date, dateLabel, onOpenCourbe }) {
+  const { form, patch, formRef } = useEntryForm(open, entry, date, onSave);
+  const [tempStr, setTempStr] = useState("");
+  const [info, setInfo] = useState(false);
+  useEffect(() => { if (open) { setTempStr(fmtTemp(entry?.temperature)); setInfo(false); } }, [open, date]);
 
-  const categories = [
-    { key: "flux",           label: "Flux",     icon: "🌹", opts: FLUX_OPTS },
-    { key: "couleurRegles",  label: "Couleur",  icon: "🎨", opts: COULEUR_REGLES_OPTS },
-    { key: "caillots",       label: "Caillots", icon: "●",  opts: CAILLOTS_OPTS },
-    { key: "spotting",       label: "Spotting", icon: "🔸", opts: SPOTTING_COULEUR_OPTS },
-    { key: "glaireApparence",label: "Glaire",   icon: "💧", opts: APPARENCE_OPTS },
-  ];
-  const filledCount = categories.filter(c => form[c.key]).length;
-
-  const pick = (key, val) => {
-    const updated = { ...form, [key]: val };
-    setForm(updated);
-    onSave({ ...(entry || {}), ...updated, date, id: entry?.id || `prt_${date}_${Date.now()}` });
-    setPicker(null);
+  const commitTemp = () => {
+    const raw = tempStr.trim();
+    if (!raw) { if (formRef.current.temperature) patch({ temperature: null }); return; }
+    const v = parseFloat(raw.replace(",", "."));
+    if (isNaN(v) || v < 34 || v > 42) { setTempStr(fmtTemp(formRef.current.temperature)); return; }
+    const r = Math.round(v * 100) / 100;
+    setTempStr(fmtTemp(r));
+    patch({ temperature: r, heure: formRef.current.heure || nowHHMM() });
   };
-  const activeCategory = categories.find(c => c.key === picker);
+  const done = () => { commitTemp(); onClose(); };
+
+  const qualite = glaireQualiteOf(form);
+  const setQualite = (v) => {
+    const same = qualite === v;
+    const m = !same && v ? GLAIRE_QUALITE_MAP[v] : [null, null];
+    patch({ glaireQualite: same ? null : v, glaireSensation: m[0], glaireApparence: m[1] });
+  };
+  const quantIdx = QUANTITE_GLAIRE_OPTS.findIndex(o => o.value === form.quantiteGlaire);
+  const renseignes = (form.temperature ? 1 : 0) + ((qualite || form.quantiteGlaire) ? 1 : 0) + (form.testOvulation ? 1 : 0);
+  const heure = form.heure || nowHHMM();
+  const subLabel = dateLabel.replace(" · ", ", ");
+
+  const head = <SheetHead dateLabel={subLabel} title="Symptothermie" sub={`${renseignes}/3 renseignés`} onDone={done} />;
 
   return (
-    <Modal open={open} onClose={onClose} title="Pertes" subtitle={`${filledCount}/${categories.length} renseignés · ${fmt(date)}`}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
-        {categories.map(c => (
-          <CategoryCard key={c.key} icon={c.icon} label={c.label} value={form[c.key]} opts={c.opts}
-            onClick={() => setPicker(c.key)} />
-        ))}
-      </div>
+    <Sheet open={open} onClose={done} head={head}>
+      <button onClick={() => { commitTemp(); onOpenCourbe(); }} style={{
+        width: "100%", height: 46, borderRadius: 22, border: "1px solid var(--border-c)", background: "var(--surface)",
+        display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 18px", marginBottom: 16, cursor: "pointer",
+        color: C.primaryLight, fontSize: 16, fontWeight: 500,
+      }}>
+        Voir ma courbe <Ico name="chevR" size={18} color={C.primaryLight} sw={2.4} />
+      </button>
 
-      {activeCategory && (
-        <QuickPicker open={!!picker} onClose={() => setPicker(null)} title={activeCategory.label}
-          opts={activeCategory.opts} value={form[activeCategory.key]}
-          onPick={(v) => pick(activeCategory.key, v)} />
+      <Panel title="Mesure">
+        <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 48 }}>
+          <Ico name="clock" size={23} color={C.primaryDeep} />
+          <div style={{ flex: 1, fontSize: 17, fontWeight: 600 }}>Heure</div>
+          <div style={{ position: "relative", fontSize: 17, fontWeight: 600 }}>
+            {fmtHeure(heure)}
+            <input type="time" value={heure} onChange={e => e.target.value && patch({ heure: e.target.value })}
+              aria-label="Heure de la prise" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, padding: 0, border: "none" }} />
+          </div>
+        </div>
+        <div style={{ height: 1, background: "var(--border-c)", margin: "8px 0" }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 14, minHeight: 56 }}>
+          <Ico name="thermo" size={23} color={C.primaryDeep} />
+          <div style={{ flex: 1, fontSize: 17, fontWeight: 600 }}>Température</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, height: 40, padding: "0 12px", borderRadius: 14, border: "1px solid var(--chip-b)", background: "var(--chip)" }}>
+            <input value={tempStr} inputMode="decimal" placeholder="__,__" aria-label="Température"
+              onChange={e => setTempStr(e.target.value.replace(/[^0-9.,]/g, "").slice(0, 5))}
+              onBlur={commitTemp} onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
+              style={{ width: 58, border: "none", background: "transparent", padding: 0, textAlign: "right", fontSize: 17, fontWeight: 600, borderRadius: 0, boxShadow: "none" }} />
+            <span style={{ fontSize: 17, fontWeight: 600 }}>°C</span>
+          </div>
+        </div>
+      </Panel>
+
+      <Panel title={<><CatIcon name="dropFill" size={26} color={C.icGlaire} />Glaire cervicale</>}
+        right={<button onClick={() => setInfo(true)} aria-label="Informations" style={{ ...roundBtn, width: 30, height: 30 }}><Ico name="info" size={17} color={C.dMuted} /></button>}>
+        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Qualité</div>
+        <ChipWrap>
+          {GLAIRE_QUALITE_OPTS.map(o => <Chip key={o.value} label={o.label} active={qualite === o.value} onClick={() => setQualite(o.value)} />)}
+        </ChipWrap>
+        <div style={{ height: 1, background: "var(--border-c)", margin: "18px 0 16px" }} />
+        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Quantité</div>
+        <ScaleField levels={QUANTITE_GLAIRE_OPTS.map(o => o.label)} value={quantIdx >= 0 ? quantIdx : null}
+          onChange={i => patch({ quantiteGlaire: i == null ? null : QUANTITE_GLAIRE_OPTS[i].value })} />
+      </Panel>
+
+      <Panel title="Test d'ovulation">
+        <ChipWrap>
+          {TEST_OVULATION_OPTS.map(o => <Chip key={o.value} label={o.label} active={form.testOvulation === o.value}
+            onClick={() => patch({ testOvulation: form.testOvulation === o.value ? null : o.value })} />)}
+        </ChipWrap>
+      </Panel>
+
+      <Panel title="Col de l'utérus">
+        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Fermeté</div>
+        <ChipWrap>
+          {FERMETE_OPTS.map(o => <Chip key={o.value} label={o.label} active={form.colFermete === o.value}
+            onClick={() => patch({ colFermete: form.colFermete === o.value ? null : o.value })} />)}
+        </ChipWrap>
+        <div style={{ fontSize: 16, fontWeight: 600, margin: "18px 0 12px" }}>Ouverture</div>
+        <ChipWrap>
+          {OUVERTURE_OPTS.map(o => <Chip key={o.value} label={o.label} active={form.colOuverture === o.value}
+            onClick={() => patch({ colOuverture: form.colOuverture === o.value ? null : o.value })} />)}
+        </ChipWrap>
+      </Panel>
+
+      <InfoSheet open={info} onClose={() => setInfo(false)} title="Glaire cervicale">
+        La glaire évolue au fil du cycle : sèche ou absente après les règles, puis collante, crémeuse, humide, et enfin
+        « blanc d'œuf » (filante, très fertile) autour de l'ovulation. Note la meilleure qualité observée dans la journée.
+      </InfoSheet>
+    </Sheet>
+  );
+}
+
+// ─── FEUILLE PERTES ──────────────────────────────────────────────────────────
+function PertesSheet({ open, onClose, onSave, entry, date, dateLabel }) {
+  const { form, patch, formRef } = useEntryForm(open, entry, date, onSave);
+  const [screen, setScreen] = useState(null); // "regles" | "glaire" | "spotting"
+  const [info, setInfo] = useState(null);
+  useEffect(() => { if (open) { setScreen(null); setInfo(null); } }, [open, date]);
+
+  const patchPertes = (p) => {
+    const m = { ...formRef.current, ...p };
+    // Garde le champ « saignement » (utilisé par l'algorithme et les tableaux) cohérent
+    const derived = m.flux ? FLUX_TO_SAIGNEMENT[m.flux] : (m.spotting ? "spotting" : null);
+    const wasDerived = !!(formRef.current.flux || formRef.current.spotting);
+    if (derived) p.saignement = derived; else if (wasDerived) p.saignement = null;
+    patch(p);
+  };
+  const pickOne = (key, value) => patchPertes({ [key]: formRef.current[key] === value ? null : value });
+
+  const qualite = glaireQualiteOf(form);
+  const setQualite = (v) => {
+    const same = qualite === v;
+    const m = !same && v ? GLAIRE_QUALITE_MAP[v] : [null, null];
+    patch({ glaireQualite: same ? null : v, glaireSensation: m[0], glaireApparence: m[1] });
+  };
+  const fluxIdx = FLUX_OPTS.findIndex(o => o.value === form.flux);
+  const reglesFilled = !!(form.flux || form.couleurRegles || form.caillots);
+  const reglesSummary = [FLUX_OPTS.find(o => o.value === form.flux)?.label, COULEUR_REGLES_OPTS.find(o => o.value === form.couleurRegles)?.label,
+    form.caillots === "oui" ? "Caillots" : null].filter(Boolean).join(", ");
+  const renseignes = (reglesFilled ? 1 : 0) + (qualite ? 1 : 0) + (form.spotting ? 1 : 0);
+
+  const heads = {
+    regles:   <SheetHead dateLabel={dateLabel} title="Règles" icon="dropFill" iconColor={C.icRegles} onBack={() => setScreen(null)} />,
+    glaire:   <SheetHead dateLabel={dateLabel} title="Glaire cervicale" icon="dropFill" iconColor={C.icGlaire} onBack={() => setScreen(null)} onInfo={() => setInfo("glaire")} />,
+    spotting: <SheetHead dateLabel={dateLabel} title="Spotting" icon="spot" iconColor={C.icSpot} onBack={() => setScreen(null)} onInfo={() => setInfo("spotting")} />,
+  };
+  const head = screen ? heads[screen] : <SheetHead dateLabel={dateLabel} title="Pertes" sub={`${renseignes}/3 renseignés`} onDone={onClose} />;
+
+  return (
+    <Sheet open={open} onClose={onClose} head={head} scrollKey={screen}>
+      {!screen && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <CatTile icon="dropFill" color={C.icRegles} label="Règles" summary={reglesSummary} filled={reglesFilled} onClick={() => setScreen("regles")} />
+          <CatTile icon="dropFill" color={C.icGlaire} label="Glaire cervicale" filled={false} summary={qualite ? GLAIRE_QUALITE_OPTS.find(o => o.value === qualite)?.label : null} onClick={() => setScreen("glaire")} />
+          <CatTile icon="spot" color={C.icSpot} label="Spotting" wide summary={form.spotting ? SPOTTING_COULEUR_OPTS.find(o => o.value === form.spotting)?.label : null} filled={false} onClick={() => setScreen("spotting")} />
+        </div>
       )}
-    </Modal>
+
+      {screen === "regles" && (
+        <>
+          <Panel title="Flux">
+            <ScaleField levels={FLUX_OPTS.map(o => o.label)} value={fluxIdx >= 0 ? fluxIdx : null}
+              onChange={i => patchPertes({ flux: i == null ? null : FLUX_OPTS[i].value })} />
+          </Panel>
+          <Panel title="Couleur">
+            <ChipWrap>{COULEUR_REGLES_OPTS.map(o => <Chip key={o.value} label={o.label} active={form.couleurRegles === o.value} onClick={() => pickOne("couleurRegles", o.value)} />)}</ChipWrap>
+          </Panel>
+          <Panel title="Caillots">
+            <ChipWrap>{CAILLOTS_OPTS.map(o => <Chip key={o.value} label={o.label} active={form.caillots === o.value} onClick={() => pickOne("caillots", o.value)} />)}</ChipWrap>
+          </Panel>
+        </>
+      )}
+
+      {screen === "glaire" && (
+        <Panel>
+          <ChipWrap>{GLAIRE_QUALITE_OPTS.map(o => <Chip key={o.value} label={o.label} active={qualite === o.value} onClick={() => setQualite(o.value)} />)}</ChipWrap>
+        </Panel>
+      )}
+
+      {screen === "spotting" && (
+        <Panel>
+          <ChipWrap>{SPOTTING_COULEUR_OPTS.map(o => <Chip key={o.value} label={o.label} active={form.spotting === o.value} onClick={() => pickOne("spotting", o.value)} />)}</ChipWrap>
+        </Panel>
+      )}
+
+      <InfoSheet open={info === "glaire"} onClose={() => setInfo(null)} title="Glaire cervicale">
+        Sèche ou absente après les règles, la glaire devient collante, crémeuse, puis humide et enfin « blanc d'œuf »
+        (filante, très fertile) autour de l'ovulation. Note la meilleure qualité observée dans la journée.
+      </InfoSheet>
+      <InfoSheet open={info === "spotting"} onClose={() => setInfo(null)} title="Spotting">
+        Petits saignements en dehors des règles, parfois autour de l'ovulation ou en fin de cycle. Indique simplement leur couleur.
+      </InfoSheet>
+    </Sheet>
   );
 }
 
@@ -1130,24 +1672,22 @@ function describeArc(cx, cy, r, startAngle, endAngle) {
   return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y}`;
 }
 
-function PhaseWheel({ avgLen, ovMean, curseurJour, onChange, size = 260 }) {
+const PHASE_DIM = { menstruelle: C.phMensDim, folliculaire: C.phFolDim, ovulatoire: C.phOvuDim, luteale: C.phLutDim };
+const RING_GAP = 11; // degrés laissés entre deux phases
+
+function PhaseWheel({ avgLen, ovMean, dureeRegles, curseurJour, onChange, size = 300 }) {
   const svgRef = useRef(null);
   const [dragging, setDragging] = useState(false);
-  const cx = size / 2, cy = size / 2, r = size / 2 - 16;
-  const segments = phaseSegments(avgLen, ovMean);
-  const uid = useRef(`w${Math.random().toString(36).slice(2, 8)}`).current;
+  const cx = size / 2, cy = size / 2, r = size / 2 - 14;
+  const segments = phaseSegments(avgLen, ovMean, dureeRegles);
 
-  const dayToAngle = (day) => ((day - 1) / avgLen) * 360;
-  const angleToDay = (angle) => {
-    const day = Math.round((angle / 360) * avgLen) + 1;
-    return Math.min(avgLen, Math.max(1, day));
-  };
+  const dayToAngle = (day) => (Math.min(day, avgLen) / avgLen) * 360;
+  const angleToDay = (angle) => Math.min(avgLen, Math.max(1, Math.round((angle / 360) * avgLen)));
 
   const handlePointer = useCallback((clientX, clientY) => {
     const svg = svgRef.current;
     if (!svg) return;
     const rect = svg.getBoundingClientRect();
-    // Le SVG est affiché à une taille réelle différente de ses unités internes (viewBox) → on remet à l'échelle
     const scale = rect.width / size;
     const x = (clientX - rect.left) / scale - cx;
     const y = (clientY - rect.top) / scale - cy;
@@ -1159,6 +1699,7 @@ function PhaseWheel({ avgLen, ovMean, curseurJour, onChange, size = 260 }) {
   useEffect(() => {
     if (!dragging) return;
     const move = (e) => {
+      if (e.cancelable) e.preventDefault();
       const p = e.touches ? e.touches[0] : e;
       handlePointer(p.clientX, p.clientY);
     };
@@ -1175,245 +1716,331 @@ function PhaseWheel({ avgLen, ovMean, curseurJour, onChange, size = 260 }) {
     };
   }, [dragging, handlePointer]);
 
+  const active = getPhaseForDay(curseurJour, avgLen, ovMean, dureeRegles).phase;
   const handleAngle = dayToAngle(curseurJour);
-  const handleRad = (handleAngle - 90) * Math.PI / 180;
-  const hx = cx + r * Math.cos(handleRad);
-  const hy = cy + r * Math.sin(handleRad);
-  const handleColor = PHASE_COLORS[getPhaseForDay(curseurJour, avgLen, ovMean).phase];
+  const rad = (handleAngle - 90) * Math.PI / 180;
+  const hx = cx + r * Math.cos(rad);
+  const hy = cy + r * Math.sin(rad);
+  const handleColor = PHASE_COLORS[active];
+
+  // Repère « fin des règles » quand on n'est plus en phase menstruelle
+  const mens = segments.find(s => s.phase === "menstruelle");
+  const mRad = mens ? (dayToAngle(mens.end) - 90) * Math.PI / 180 : 0;
+  const mx = cx + r * Math.cos(mRad), my = cy + r * Math.sin(mRad);
 
   return (
     <svg ref={svgRef} viewBox={`0 0 ${size} ${size}`} width="100%" height="100%" style={{ display: "block", touchAction: "none", overflow: "visible" }}>
-      <defs>
-        <filter id={`glow-${uid}`} x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="2.4" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        {segments.map((s, i) => (
-          <linearGradient key={i} id={`grad-${uid}-${i}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={PHASE_COLORS[s.phase]} stopOpacity="0.75" />
-            <stop offset="100%" stopColor={PHASE_COLORS[s.phase]} stopOpacity="0.9" />
-          </linearGradient>
-        ))}
-      </defs>
-
-      {/* Glow layer (blurred, derrière) — avec espacement entre phases */}
       {segments.map((s, i) => {
-        const rawStart = dayToAngle(s.start);
-        const rawEnd = dayToAngle(s.end + 1);
-        const gap = Math.min(14, Math.max(4, (rawEnd - rawStart) * 0.4));
-        const startA = rawStart + gap / 2;
-        const endA = rawEnd - gap / 2;
+        const a0 = ((s.start - 1) / avgLen) * 360 + RING_GAP / 2;
+        const a1 = (s.end / avgLen) * 360 - RING_GAP / 2;
+        if (a1 <= a0) return null;
+        const on = s.phase === active;
         return (
-          <path key={"g" + i}
-            d={describeArc(cx, cy, r, startA, endA)}
-            fill="none" stroke={PHASE_COLORS[s.phase]} strokeWidth={6} strokeLinecap="round"
-            opacity={0.16} filter={`url(#glow-${uid})`} />
-        );
-      })}
-      {/* Arc net — avec espacement entre phases */}
-      {segments.map((s, i) => {
-        const rawStart = dayToAngle(s.start);
-        const rawEnd = dayToAngle(s.end + 1);
-        const gap = Math.min(14, Math.max(4, (rawEnd - rawStart) * 0.4));
-        const startA = rawStart + gap / 2;
-        const endA = rawEnd - gap / 2;
-        return (
-          <path key={i}
-            d={describeArc(cx, cy, r, startA, endA)}
-            fill="none" stroke={`url(#grad-${uid}-${i})`} strokeWidth={5} strokeLinecap="round" />
+          <path key={i} d={describeArc(cx, cy, r, a0, a1)} fill="none" strokeLinecap="round"
+            stroke={on ? PHASE_COLORS[s.phase] : PHASE_DIM[s.phase]} strokeWidth={on ? 4.6 : 2.2}
+            style={{ transition: "stroke .4s ease, stroke-width .4s ease" }} />
         );
       })}
 
-      {/* Halo derrière le curseur */}
-      <circle cx={hx} cy={hy} r={15} fill={handleColor} opacity={0.14} filter={`url(#glow-${uid})`} />
-      <circle cx={hx} cy={hy} r={12.5}
-        fill={handleColor}
-        stroke="var(--surface)" strokeWidth={3.5}
-        style={{ cursor: "grab", filter: "drop-shadow(0 2px 6px rgba(0,0,0,.2))" }}
-        onMouseDown={() => setDragging(true)}
-        onTouchStart={() => setDragging(true)}
-      />
-      <circle cx={hx} cy={hy} r={4} fill="var(--surface)" opacity={0.9} style={{ pointerEvents: "none" }} />
+      {mens && active !== "menstruelle" && (
+        <g style={{ pointerEvents: "none" }}>
+          <circle cx={mx} cy={my} r={7} fill="none" stroke={C.phMensDim} strokeWidth={1.6} />
+          <circle cx={mx} cy={my} r={2.4} fill={C.phMens} />
+        </g>
+      )}
+
+      <g style={{ cursor: "grab" }} onMouseDown={() => setDragging(true)} onTouchStart={() => setDragging(true)}>
+        <circle cx={hx} cy={hy} r={24} fill="transparent" />
+        <circle cx={hx} cy={hy} r={13.5} style={{ fill: "var(--bg)" }} />
+        <circle cx={hx} cy={hy} r={11.5} fill={handleColor} />
+        <text x={hx} y={hy + 3.6} textAnchor="middle" fontSize="10.5" fontWeight="700" fill={C.white}
+          style={{ pointerEvents: "none", fontFamily: "'DM Sans', sans-serif" }}>J{curseurJour}</text>
+      </g>
     </svg>
   );
 }
 
-// ─── ÉCRAN D'ACCUEIL ─────────────────────────────────────────────────────────
-function Accueil({ entries, cycles, settings, onSaveSymptomes, onSaveSymptothermie, onSavePertes }) {
-  const currentCycleNum = useMemo(() => Math.max(1, ...entries.map(e => e.cycleNum || 1)), [entries]);
-  const currentEntries = useMemo(() =>
-    entries.filter(e => e.cycleNum === currentCycleNum).sort((a, b) => a.date.localeCompare(b.date)),
-    [entries, currentCycleNum]
+// Orbe central : disque pastel aux bords flous, taches et traînées plus saturées
+function Orb({ phase, label }) {
+  const o = ORB[phase];
+  return (
+    <>
+      <div style={{
+        position: "absolute", inset: "11%", borderRadius: "50%", overflow: "hidden",
+        background: `radial-gradient(circle at 62% 16%, ${o.light} 0%, ${o.base} 62%)`,
+        WebkitMaskImage: "radial-gradient(circle closest-side, #000 93%, transparent 100%)",
+        maskImage: "radial-gradient(circle closest-side, #000 93%, transparent 100%)",
+        transition: "background .6s ease",
+      }}>
+        <div style={{ position: "absolute", left: "14%", top: "16%", width: "42%", height: "34%", borderRadius: "50%", background: o.dark, opacity: .8, filter: "blur(24px)", animation: "floatBlobA 13s ease-in-out infinite", transition: "background .6s ease" }} />
+        <div style={{ position: "absolute", left: "58%", top: "46%", width: "34%", height: "30%", borderRadius: "50%", background: o.dark, opacity: .55, filter: "blur(22px)", animation: "floatBlobB 15s ease-in-out infinite", transition: "background .6s ease" }} />
+        <div style={{ position: "absolute", left: "26%", top: "72%", width: "48%", height: "26%", borderRadius: "50%", background: o.dark, opacity: .85, filter: "blur(22px)", animation: "floatBlobA 17s ease-in-out infinite", transition: "background .6s ease" }} />
+        <div style={{ position: "absolute", left: "6%", top: "35%", width: "88%", height: "9%", borderRadius: "50%", background: C.white, opacity: .32, filter: "blur(10px)", transform: "rotate(-7deg)" }} />
+        <div style={{ position: "absolute", left: "10%", top: "49%", width: "80%", height: "7%", borderRadius: "50%", background: C.white, opacity: .22, filter: "blur(9px)", transform: "rotate(-5deg)" }} />
+      </div>
+      <div style={{
+        position: "absolute", inset: "11%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        pointerEvents: "none", animation: "breathe 7s ease-in-out infinite",
+      }}>
+        <div style={{ fontSize: 11, letterSpacing: ".3em", fontWeight: 500, color: C.white, opacity: .82, paddingLeft: ".3em" }}>PHASE</div>
+        <div style={{ fontSize: "clamp(22px, 6.6vw, 27px)", fontWeight: 700, color: C.white, letterSpacing: "-.01em", marginTop: 5 }}>{label}</div>
+        <div style={{ width: 28, height: 2.5, background: C.white, opacity: .85, marginTop: 14, borderRadius: 99 }} />
+      </div>
+    </>
   );
+}
 
-  const cycleLengths = cycles.filter(c => c.dateFin && c.dateDebut)
-    .map(c => Math.floor((new Date(c.dateFin) - new Date(c.dateDebut)) / 86400000) + 1);
-  const avgLen = cycleLengths.length ? Math.round(cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length) : 28;
+// ─── ÉCRAN D'ACCUEIL ─────────────────────────────────────────────────────────
+const headBtn = {
+  width: 42, height: 42, borderRadius: "50%", border: "1px solid var(--border-c)", background: "var(--surface)",
+  display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, padding: 0,
+  color: "var(--muted-c)",
+};
 
-  const cycleGroups = useMemo(() => {
-    const g = {};
-    entries.forEach(e => { (g[e.cycleNum] = g[e.cycleNum] || []).push(e); });
-    return g;
-  }, [entries]);
-  const ovStats = useMemo(() => {
-    const hist = Object.entries(cycleGroups).filter(([n]) => parseInt(n) < currentCycleNum).map(([, ents]) => ({ entries: ents }));
-    return computeOvulationStats(hist);
-  }, [cycleGroups, currentCycleNum]);
-  const ovMean = ovStats.mean || 14;
-
-  const todayCycleDay = useMemo(() => {
-    if (!currentEntries.length) return 1;
-    const today = new Date().toISOString().slice(0, 10);
-    const start = currentEntries[0]?.date;
-    if (!start) return 1;
-    const diff = Math.floor((new Date(today) - new Date(start)) / 86400000) + 1;
-    return Math.max(1, diff);
-  }, [currentEntries]);
+function Accueil({ entries, cycles, settings, onSave, onUpdateSettings, onNavigate, focusDate, onFocusConsumed }) {
+  const { currentCycleNum, cycleStart, avgLen, ovMean, dureeRegles, todayCycleDay } = useCycleStats(entries, cycles);
+  const today = todayStr();
 
   const [curseurJour, setCurseurJour] = useState(todayCycleDay);
   useEffect(() => { setCurseurJour(todayCycleDay); }, [todayCycleDay]);
+  useEffect(() => {
+    if (!focusDate) return;
+    const d = diffDays(focusDate, cycleStart) + 1;
+    if (d >= 1) setCurseurJour(d);
+    onFocusConsumed && onFocusConsumed();
+  }, [focusDate]);
 
-  const curseurDate = useMemo(() => {
-    const start = currentEntries[0]?.date || new Date().toISOString().slice(0, 10);
-    const d = new Date(start + "T00:00:00");
-    d.setDate(d.getDate() + (curseurJour - 1));
-    return d.toISOString().slice(0, 10);
-  }, [currentEntries, curseurJour]);
-
-  const phaseInfo = getPhaseForDay(curseurJour, avgLen, ovMean);
-  const isToday = curseurDate === new Date().toISOString().slice(0, 10);
-  const isFuture = curseurDate > new Date().toISOString().slice(0, 10);
+  const curseurDate = addDays(cycleStart, curseurJour - 1);
+  const phaseInfo = getPhaseForDay(curseurJour, avgLen, ovMean, dureeRegles);
+  const isToday = curseurDate === today;
+  const isFuture = curseurDate > today;
   const joursAvantRegles = avgLen - curseurJour + 1;
-
   const entryForCurseur = entries.find(e => e.date === curseurDate);
+  const streak = useMemo(() => computeStreak(entries), [entries]);
 
-  const gami = useMemo(() => computeGamification(entries), [entries]);
+  const [modalOuvert, setModalOuvert] = useState(null);
 
-  const [modalOuvert, setModalOuvert] = useState(null); // "symptomes" | "symptothermie" | "pertes"
+  const handleSave = (data) => onSave({ ...(entryForCurseur || {}), ...data, date: curseurDate, cycleNum: currentCycleNum });
 
-  const statusLabel = (has, filled) => isFuture ? "Le jour J" : filled ? "Terminé" : "Non renseigné";
+  const dm = fmtDM(curseurDate);
+  const weekday = capFirst(new Date(curseurDate + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long" }));
+  const dateLabel = isToday ? `Aujourd'hui · ${dm}` : `${weekday} · ${dm}`;
+  const dateLine = isToday ? `Aujourd'hui, ${dm}` : `${weekday} ${dm}`;
 
   const cards = [
-    { id: "symptomes", label: "Symptômes", icon: "📝", filled: hasSymptomes(entryForCurseur) },
-    { id: "symptothermie", label: "Symptothermie", icon: "🌡️", filled: hasSymptothermie(entryForCurseur) },
-    { id: "pertes", label: "Pertes", icon: "💧", filled: hasPertes(entryForCurseur) },
+    { id: "symptomes", label: "Symptômes", icon: "edit", n: symCount(entryForCurseur), fem: false },
+    { id: "symptothermie", label: "Symptothermie", icon: "thermo", n: sthCount(entryForCurseur), fem: true },
+    { id: "pertes", label: "Pertes", icon: "drop", n: pertesCount(entryForCurseur), fem: true },
   ];
+  const status = (c) => isFuture ? "Le jour J" : c.n > 0 ? `${c.n} enregistré${c.fem ? "e" : ""}${c.n > 1 ? "s" : ""}` : "Non renseigné";
 
-  const handleSave = (category, data) => {
-    const merged = { ...(entryForCurseur || {}), ...data, date: curseurDate, cycleNum: currentCycleNum };
-    if (category === "symptomes") onSaveSymptomes(merged);
-    if (category === "symptothermie") onSaveSymptothermie(merged);
-    if (category === "pertes") onSavePertes(merged);
-  };
+  const pillText = phaseInfo.phase === "menstruelle" ? `J${curseurJour} des règles`
+    : joursAvantRegles > 0 ? `J-${joursAvantRegles} avant règles` : "Règles imminentes";
 
-  const dateLabel = new Date(curseurDate + "T00:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  const initial = (settings.prenom || "M").trim().charAt(0).toUpperCase();
 
   return (
-    <div className="anim" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div>
-          <div style={{ fontFamily: "Cormorant Garamond", fontSize: 26, fontWeight: 600 }}>
-            Bonjour{settings.prenom ? `, ${settings.prenom}` : ""}
-          </div>
-          <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 2 }}>
-            Niveau {gami.niveauNum} · {gami.nom}
-          </div>
+    <div className="anim" style={{ display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 440, margin: "0 auto" }}>
+      <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0, fontSize: 27, fontWeight: 700, letterSpacing: "-.01em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          Hello{settings.prenom ? ` ${settings.prenom}` : ""}
         </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 11, color: "var(--muted-c)" }}>{gami.xp}/{gami.xpMax} XP</div>
-          <div style={{ width: 80, height: 5, borderRadius: 99, background: "var(--surface-2)", marginTop: 4, overflow: "hidden" }}>
-            <div style={{ width: `${gami.progres}%`, height: "100%", background: C.primary, borderRadius: 99 }} />
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 3, color: C.primaryDeep, fontWeight: 700, fontSize: 18, marginRight: 4 }}>
+          <Ico name="dropFill" size={20} color={C.primaryDeep} />{streak}
         </div>
+        <button onClick={() => onNavigate("calendrier")} aria-label="Calendrier" style={headBtn}><Ico name="calendarDots" size={21} color="var(--muted-c)" /></button>
+        <button onClick={() => onNavigate("params")} aria-label="Profil" style={{ ...headBtn, background: C.avatarBg, border: "none", color: C.primaryLight, fontSize: 19, fontWeight: 600 }}>{initial}</button>
       </div>
 
       <div style={{
-        padding: "6px 16px", borderRadius: 99, background: "var(--surface-2)",
-        fontSize: 12, fontWeight: 600, color: "var(--muted-c)", letterSpacing: ".04em",
-        marginBottom: 20, textTransform: "uppercase",
-      }}>
-        {phaseInfo.phase === "menstruelle" && curseurJour <= 1 ? "J1 des règles" :
-         phaseInfo.phase === "menstruelle" ? `J${curseurJour} des règles` :
-         joursAvantRegles > 0 ? `J-${joursAvantRegles} avant règles` : "Règles imminentes"}
+        marginTop: 26, padding: "9px 20px", borderRadius: 99, background: "var(--surface)", border: "1px solid var(--border-c)",
+        fontSize: 13.5, fontWeight: 600, color: "var(--muted-c)", letterSpacing: ".07em", textTransform: "uppercase",
+      }}>{pillText}</div>
+
+      <div style={{ position: "relative", width: "100%", maxWidth: 336, aspectRatio: "1", marginTop: 26, padding: 0 }}>
+        <PhaseWheel avgLen={avgLen} ovMean={ovMean} dureeRegles={dureeRegles} curseurJour={curseurJour} onChange={setCurseurJour} />
+        <Orb phase={phaseInfo.phase} label={phaseInfo.label} />
       </div>
 
-      <div style={{ position: "relative", width: "100%", maxWidth: 340, aspectRatio: "1", marginBottom: 30 }}>
-        <PhaseWheel avgLen={avgLen} ovMean={ovMean} curseurJour={curseurJour} onChange={setCurseurJour} size={260} />
+      <div style={{ marginTop: 26, fontSize: 16.5, color: "var(--muted-c)" }}>{dateLine}</div>
 
-        {/* Orbe central : blobs flous animés + verre dépoli, en version sobre */}
-        <div style={{ position: "absolute", inset: "16%", borderRadius: "50%", overflow: "hidden" }}>
-          <div style={{
-            position: "absolute", inset: "-20%", borderRadius: "50%",
-            background: `radial-gradient(circle, ${phaseInfo.color}45 0%, ${phaseInfo.color}00 65%)`,
-            filter: "blur(26px)", animation: "floatBlobA 12s ease-in-out infinite",
-            transition: "background 0.6s ease",
-          }} />
-          <div style={{
-            position: "absolute", inset: "-15%", borderRadius: "50%",
-            background: `radial-gradient(circle, ${phaseInfo.color}30 0%, transparent 70%)`,
-            filter: "blur(30px)", animation: "floatBlobB 14s ease-in-out infinite",
-            transition: "background 0.6s ease",
-          }} />
-          <div style={{
-            position: "absolute", inset: 0, borderRadius: "50%",
-            background: `radial-gradient(circle at 32% 28%, ${C.white}30, transparent 45%),
-                         radial-gradient(circle at 70% 75%, ${phaseInfo.color}22, transparent 55%),
-                         radial-gradient(circle at 50% 50%, ${phaseInfo.color}12, ${phaseInfo.color}05 70%)`,
-            border: `1px solid ${phaseInfo.color}25`,
-            boxShadow: `inset 0 2px 18px ${phaseInfo.color}14, 0 4px 18px ${phaseInfo.color}14`,
-            transition: "background 0.6s ease, border-color 0.6s ease",
-          }} />
-        </div>
-
-        {/* Contenu texte centré, animation respiration douce */}
-        <div style={{
-          position: "absolute", inset: "16%", borderRadius: "50%",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          pointerEvents: "none", animation: "breathe 6s ease-in-out infinite",
-        }}>
-          <div style={{ fontSize: "clamp(10px, 3vw, 12px)", color: "var(--muted-c)", textTransform: "uppercase", letterSpacing: ".18em", fontWeight: 600 }}>Phase</div>
-          <div style={{
-            fontFamily: "'DM Sans', sans-serif", fontSize: "clamp(22px, 7vw, 30px)", fontWeight: 700, color: phaseInfo.color,
-            textTransform: "capitalize", letterSpacing: "-.01em", marginTop: 4,
-            transition: "color 0.6s ease",
-          }}>
-            {phaseInfo.label}
-          </div>
-          <div style={{ width: 26, height: 3, background: phaseInfo.color, opacity: 0.45, marginTop: 10, borderRadius: 99, transition: "background 0.6s ease" }} />
-        </div>
-      </div>
-
-      <div style={{ fontSize: 13, color: "var(--muted-c)", marginBottom: 28, textTransform: "capitalize" }}>
-        {isToday ? "Aujourd'hui, " : ""}{dateLabel}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, width: "100%", marginBottom: 20 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, width: "100%", marginTop: 28 }}>
         {cards.map(c => (
           <button key={c.id} onClick={() => !isFuture && setModalOuvert(c.id)} disabled={isFuture} style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 7,
-            padding: "18px 10px", borderRadius: 18, border: "1px solid var(--border-c)",
-            background: c.filled ? phaseInfo.color + "18" : "var(--surface)",
-            cursor: isFuture ? "default" : "pointer", opacity: isFuture ? 0.5 : 1,
-            transition: "background .2s",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 7, padding: "18px 6px 17px",
+            borderRadius: 22, border: "1px solid var(--border-c)", background: "var(--surface)", color: "var(--text-c)",
+            cursor: isFuture ? "default" : "pointer", opacity: isFuture ? 0.5 : 1, minWidth: 0,
           }}>
-            <span style={{ fontSize: 22 }}>{c.icon}</span>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{c.label}</span>
-            <span style={{ fontSize: 11, color: c.filled ? phaseInfo.color : "var(--muted-c)" }}>
-              {statusLabel(true, c.filled)}
+            <span style={{ width: 32, height: 32, borderRadius: "50%", background: phaseInfo.color + "33", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 3 }}>
+              <Ico name={c.icon} size={18} color={phaseInfo.color} />
             </span>
+            <span style={{ fontSize: 14.5, fontWeight: 600 }}>{c.label}</span>
+            <span style={{ fontSize: 12.5, color: c.n > 0 && !isFuture ? C.primaryLight : "var(--muted-c)" }}>{status(c)}</span>
           </button>
         ))}
       </div>
 
-      <SymptomesModal open={modalOuvert === "symptomes"} onClose={() => setModalOuvert(null)}
-        onSave={(d) => handleSave("symptomes", d)} entry={entryForCurseur} date={curseurDate} />
-      <SymptothermieModal open={modalOuvert === "symptothermie"} onClose={() => setModalOuvert(null)}
-        onSave={(d) => handleSave("symptothermie", d)} entry={entryForCurseur} date={curseurDate} />
-      <PertesModal open={modalOuvert === "pertes"} onClose={() => setModalOuvert(null)}
-        onSave={(d) => handleSave("pertes", d)} entry={entryForCurseur} date={curseurDate} />
+      <SymptomesSheet open={modalOuvert === "symptomes"} onClose={() => setModalOuvert(null)} onSave={handleSave}
+        entry={entryForCurseur} date={curseurDate} dateLabel={dateLabel} settings={settings} onUpdateSettings={onUpdateSettings} />
+      <SymptothermieSheet open={modalOuvert === "symptothermie"} onClose={() => setModalOuvert(null)} onSave={handleSave}
+        entry={entryForCurseur} date={curseurDate} dateLabel={dateLabel} onOpenCourbe={() => { setModalOuvert(null); onNavigate("courbe"); }} />
+      <PertesSheet open={modalOuvert === "pertes"} onClose={() => setModalOuvert(null)} onSave={handleSave}
+        entry={entryForCurseur} date={curseurDate} dateLabel={dateLabel} />
+    </div>
+  );
+}
+
+// ─── COURBE SYMPTOTHERMIE ────────────────────────────────────────────────────
+function Courbe({ entries, cycles, onBack, onNavigate }) {
+  const { currentEntries, cycleStart, avgLen, ovMean, dureeRegles, todayCycleDay } = useCycleStats(entries, cycles);
+  const byDay = useMemo(() => {
+    const m = {};
+    currentEntries.forEach(e => { m[diffDays(e.date, cycleStart) + 1] = e; });
+    return m;
+  }, [currentEntries, cycleStart]);
+  const N = Math.max(3, todayCycleDay, ...Object.keys(byDay).map(Number));
+  const [sel, setSel] = useState(todayCycleDay);
+  const [expanded, setExpanded] = useState(true);
+  const wrapRef = useRef(null);
+  const scrollRef = useRef(null);
+  const [W, setW] = useState(340);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const upd = () => setW(el.clientWidth || 340);
+    upd();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(upd);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const colW = expanded ? Math.max(52, Math.floor(W / Math.min(N, 7))) : Math.max(14, Math.floor(W / N));
+  const svgW = Math.max(W, colW * N);
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollLeft = Math.max(0, (sel - 0.5) * colW - W / 2);
+  }, [expanded, colW, W]);
+
+  const H = 300, LAB = 40, padTop = 53, padBottom = 23;
+  const temps = Object.entries(byDay).filter(([, e]) => e.temperature > 35).map(([d, e]) => ({ d: +d, t: +e.temperature }));
+  const minT = temps.length ? Math.min(...temps.map(x => x.t)) : 36.2;
+  const maxT = temps.length ? Math.max(...temps.map(x => x.t)) : 36.8;
+  let lo = 35.6; while (minT < lo + 0.05) lo = Math.round((lo - 0.6) * 10) / 10;
+  let hi = lo + 1.8; while (maxT > hi - 0.05) hi = Math.round((hi + 0.6) * 10) / 10;
+  const ticks = []; for (let v = lo; v <= hi + 0.01; v = Math.round((v + 0.6) * 10) / 10) ticks.push(v);
+  const yOf = (t) => padTop + ((hi - t) / (hi - lo)) * (H - padTop - padBottom);
+  const xOf = (d) => (d - 0.5) * colW;
+
+  const phaseOf = (d) => getPhaseForDay(d, avgLen, ovMean, dureeRegles);
+  const runs = [];
+  for (let d = 1; d <= N; d++) {
+    const p = phaseOf(d).phase;
+    if (runs.length && runs[runs.length - 1].phase === p) runs[runs.length - 1].end = d; else runs.push({ phase: p, start: d, end: d });
+  }
+  const segs = [];
+  temps.forEach((pt, i) => {
+    if (i > 0 && temps[i - 1].d === pt.d - 1) segs[segs.length - 1].push(pt); else segs.push([pt]);
+  });
+
+  const ana = useMemo(() => analyserCycle(currentEntries), [currentEntries]);
+  const selEntry = byDay[sel];
+  const selDate = addDays(cycleStart, sel - 1);
+  const selPhase = phaseOf(sel);
+  const qual = glaireQualiteOf(selEntry);
+  const qualLabel = qual ? GLAIRE_QUALITE_OPTS.find(o => o.value === qual)?.label : null;
+  const testLabel = TEST_OVULATION_OPTS.find(o => o.value === selEntry?.testOvulation)?.label;
+  const rows = [
+    ["Température", selEntry?.temperature ? `${fmtTemp(selEntry.temperature)} °C` : "Non renseignée"],
+    ["Glaire cervicale", qualLabel || "Non renseignée"],
+    ["Test d'ovulation", testLabel || "Non renseigné"],
+  ];
+  const phaseName = (p) => p === "menstruelle" ? "Règles" : capFirst(PHASE_LABELS[p]);
+  const lastLabel = todayCycleDay === N && cycleStart !== todayStr() ? "aujourd'hui" : fmtDMshort(addDays(cycleStart, N - 1));
+
+  return (
+    <div className="anim" style={{ maxWidth: 480, margin: "0 auto" }}>
+      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", height: 44, marginBottom: 18 }}>
+        <button onClick={onBack} aria-label="Retour" style={{ ...roundBtn, position: "absolute", left: 0, width: 40, height: 40 }}><Ico name="chevL" size={20} color="var(--text-c)" sw={2.4} /></button>
+        <div style={{ fontSize: 24, fontWeight: 700 }}>Symptothermie</div>
+      </div>
+
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border-c)", borderRadius: 28, overflow: "hidden" }}>
+        <div style={{ padding: "18px 18px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 21, fontWeight: 700 }}>Cycle en cours</div>
+            <div style={{ fontSize: 13.5, color: "var(--muted-c)", marginTop: 3 }}>
+              {fmtDMshort(cycleStart)} – {lastLabel} · Jour {todayCycleDay}
+            </div>
+          </div>
+          <button onClick={() => setExpanded(v => !v)} style={{ background: "none", border: "none", color: "var(--muted-c)", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, padding: "4px 0", whiteSpace: "nowrap" }}>
+            {expanded ? "Réduire la courbe" : "Agrandir la courbe"}
+            <span style={{ display: "inline-flex", transform: expanded ? "none" : "rotate(180deg)" }}><Ico name="chevD" size={16} sw={2.4} /></span>
+          </button>
+        </div>
+        <div style={{ height: 1, background: "var(--border-c)", margin: "0 18px" }} />
+
+        <div ref={wrapRef} style={{ position: "relative", marginTop: 14 }}>
+          <div ref={scrollRef} className="no-scrollbar" style={{ overflowX: svgW > W ? "auto" : "hidden", WebkitOverflowScrolling: "touch" }}>
+            <svg width={svgW} height={H + LAB} style={{ display: "block" }}>
+              {Array.from({ length: N }, (_, i) => i + 1).map(d => (
+                <rect key={"bg" + d} x={(d - 1) * colW} y={0} width={colW + 0.5} height={H} fill={PHASE_COLORS[phaseOf(d).phase] + "40"} />
+              ))}
+              {runs.map((r, i) => {
+                const x0 = (r.start - 1) * colW, w = (r.end - r.start + 1) * colW;
+                return (
+                  <g key={"run" + i}>
+                    <rect x={x0} y={0} width={w} height={3.5} fill={PHASE_COLORS[r.phase]} />
+                    {w >= 56 && <text x={x0 + w / 2} y={27} textAnchor="middle" fontSize="13" fontWeight="700" fill={PHASE_COLORS[r.phase]} style={{ fontFamily: "'DM Sans', sans-serif" }}>{phaseName(r.phase)}</text>}
+                  </g>
+                );
+              })}
+              {ticks.map(t => <line key={"g" + t} x1={0} x2={svgW} y1={yOf(t)} y2={yOf(t)} stroke={C.white} strokeOpacity=".05" />)}
+              {ana.traitBas && [ana.traitBas, ana.traitHaut].map((v, i) => v >= lo && v <= hi && (
+                <line key={"tr" + i} x1={0} x2={svgW} y1={yOf(v)} y2={yOf(v)} stroke={C.primaryLight} strokeOpacity=".55" strokeDasharray="5 5" strokeWidth="1.2" />
+              ))}
+              <line x1={xOf(sel)} x2={xOf(sel)} y1={0} y2={H} stroke={C.primary} strokeWidth="1.6" strokeDasharray="4 4" />
+              {segs.map((s, i) => (
+                <polyline key={"l" + i} points={s.map(p => `${xOf(p.d)},${yOf(p.t)}`).join(" ")} fill="none" stroke={C.primaryLight} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
+              ))}
+              {temps.map(p => <circle key={"p" + p.d} cx={xOf(p.d)} cy={yOf(p.t)} r={4.6} fill={C.primaryLight} style={{ stroke: "var(--surface)" }} strokeWidth="2" />)}
+              {Array.from({ length: N }, (_, i) => i + 1).map(d => (
+                <g key={"x" + d} onClick={() => setSel(d)} style={{ cursor: "pointer" }}>
+                  <rect x={(d - 1) * colW} y={0} width={colW} height={H + LAB} fill="transparent" />
+                  {(expanded || d === 1 || d % 5 === 0 || d === N || d === sel) && (
+                    <text x={xOf(d)} y={H + 28} textAnchor="middle" fontSize="13" fontWeight={d === sel ? 700 : 600}
+                      fill={d === sel ? C.primary : C.dMuted} style={{ fontFamily: "'DM Sans', sans-serif" }}>J{d}</text>
+                  )}
+                </g>
+              ))}
+            </svg>
+          </div>
+          {ticks.map(t => (
+            <div key={"y" + t} style={{
+              position: "absolute", left: 14, top: yOf(t) - 14, height: 28, display: "flex", alignItems: "center", padding: "0 11px",
+              borderRadius: 99, background: C.phMens + "38", color: C.primaryDeep, fontSize: 13, fontWeight: 700, pointerEvents: "none",
+            }}>{fmtTemp(t.toFixed(1))}°</div>
+          ))}
+        </div>
+
+        <div style={{ borderTop: "1px solid var(--border-c)", padding: "18px 18px 8px", marginTop: 6 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>J{sel} · {fmtDMshort(selDate)} · Phase {selPhase.label}</div>
+          {rows.map(([k, v], i) => (
+            <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "13px 0", borderBottom: i < rows.length - 1 ? "1px solid var(--border-c)" : "none" }}>
+              <span style={{ color: "var(--muted-c)", fontSize: 15 }}>{k}</span>
+              <span style={{ fontSize: 16, fontWeight: 600, textAlign: "right" }}>{v}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ height: 10 }} />
+      </div>
+
+      <button onClick={() => onNavigate("historique")} style={{
+        width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "26px 8px 8px",
+        background: "none", border: "none", color: "var(--text-c)", fontSize: 18, fontWeight: 600, cursor: "pointer", textAlign: "left",
+      }}>
+        Voir les courbes précédentes <Ico name="chevR" size={20} color="var(--muted-c)" />
+      </button>
     </div>
   );
 }
@@ -1443,7 +2070,7 @@ function Dashboard({ entries, cycles, settings }) {
 
   const todayCycleDay = useMemo(() => {
     if (!currentEntries.length) return null;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayStr();
     const start = currentEntries[0]?.date;
     if (!start) return null;
     const diff = Math.floor((new Date(today) - new Date(start)) / 86400000) + 1;
@@ -2193,104 +2820,174 @@ function Historique({ entries, cycles, isMobile, onDeleteCycle }) {
 }
 
 // ─── CALENDRIER MENSUEL ──────────────────────────────────────────────────────
-function Calendrier({ entries, cycles }) {
-  const [monthOffset, setMonthOffset] = useState(0);
+function Calendrier({ entries, cycles, onBack, onPickDate }) {
+  const { avgLen, ovMean, dureeRegles } = useCycleStats(entries, cycles);
+  const today = todayStr();
+  const HDR = 142, ROW_H = 120, MONTH_H = 56;
 
-  const cycleGroups = useMemo(() => {
-    const g = {};
-    entries.forEach(e => { (g[e.cycleNum] = g[e.cycleNum] || []).push(e); });
-    return g;
+  const sortedCycles = useMemo(() => cycles.filter(c => c.dateDebut).slice().sort((a, b) => a.dateDebut.localeCompare(b.dateDebut)), [cycles]);
+  const byDate = useMemo(() => { const m = {}; entries.forEach(e => { m[e.date] = e; }); return m; }, [entries]);
+  const ovByCycle = useMemo(() => {
+    const groups = {}, m = {};
+    entries.forEach(e => { (groups[e.cycleNum] = groups[e.cycleNum] || []).push(e); });
+    Object.entries(groups).forEach(([n, ents]) => { const ov = detectOvulation(ents); if (ov) m[n] = ov.day; });
+    return m;
   }, [entries]);
 
-  const cycleLengths = cycles.filter(c => c.dateFin && c.dateDebut)
-    .map(c => Math.floor((new Date(c.dateFin) - new Date(c.dateDebut)) / 86400000) + 1);
-  const avgLen = cycleLengths.length ? Math.round(cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length) : 28;
-  const ovStats = useMemo(() => computeOvulationStats(Object.values(cycleGroups).map(ents => ({ entries: ents }))), [cycleGroups]);
+  // Phase d'une date : cycle réel (passé) ou projection à partir du dernier cycle
+  const infoFor = useCallback((dateStr) => {
+    let cyc = null;
+    for (const c of sortedCycles) { if (dateStr >= c.dateDebut) cyc = c; else break; }
+    if (!cyc) return null;
+    const isLast = cyc === sortedCycles[sortedCycles.length - 1];
+    const abs = diffDays(dateStr, cyc.dateDebut) + 1;
+    let jour = abs, ovDay = ovByCycle[cyc.cycleNum] || Math.round(ovMean);
+    if (isLast && abs > avgLen + 7) { jour = ((abs - 1) % avgLen) + 1; ovDay = Math.round(ovMean); }
+    const phase = getPhaseForDay(jour, avgLen, ovDay, dureeRegles).phase;
+    return { phase, jour, ovDay };
+  }, [sortedCycles, ovByCycle, ovMean, avgLen, dureeRegles]);
 
-  const now = new Date();
-  const viewDate = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
-  const monthLabel = viewDate.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-  const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
-  const firstDow = (viewDate.getDay() + 6) % 7; // lundi = 0
-
-  // Trouver, pour chaque cycle connu, sa date de début pour situer les jours
-  const sortedCycles = cycles.slice().sort((a, b) => a.cycleNum - b.cycleNum);
-
-  const phaseForDate = (dateStr) => {
-    // Cycle réel qui contient cette date
-    const cyc = sortedCycles.find(c => dateStr >= c.dateDebut && dateStr <= c.dateFin);
-    if (cyc) {
-      const start = new Date(cyc.dateDebut);
-      const d = new Date(dateStr);
-      const jour = Math.floor((d - start) / 86400000) + 1;
-      return getPhaseForDay(jour, avgLen, ovStats.mean);
+  // Construction des lignes : un bandeau de mois puis les semaines (jours du mois uniquement)
+  const { rows, tops } = useMemo(() => {
+    const first = sortedCycles[0]?.dateDebut || today;
+    const nowD = new Date(today + "T12:00:00");
+    const fD = new Date(first + "T12:00:00");
+    let y = fD.getFullYear(), m = fD.getMonth();
+    const endD = new Date(nowD.getFullYear(), nowD.getMonth() + 2, 1);
+    const endY = endD.getFullYear(), endM = endD.getMonth();
+    const out = [];
+    let guard = 0;
+    while ((y < endY || (y === endY && m <= endM)) && guard++ < 80) {
+      const dim = new Date(y, m + 1, 0).getDate();
+      const firstDow = (new Date(y, m, 1).getDay() + 6) % 7;
+      const label = new Date(y, m, 1).toLocaleDateString("fr-FR", { month: "long" });
+      out.push({ type: "month", key: `m${y}-${m}`, y, m, label: capFirst(label), col: firstDow, h: MONTH_H });
+      let day = 1;
+      while (day <= dim) {
+        const cells = Array(7).fill(null);
+        let dow = (new Date(y, m, day).getDay() + 6) % 7;
+        while (dow < 7 && day <= dim) { cells[dow] = day; dow++; day++; }
+        out.push({ type: "week", key: `w${y}-${m}-${day}`, y, m, cells, h: ROW_H });
+      }
+      m++; if (m > 11) { m = 0; y++; }
     }
-    // Sinon, projection depuis le dernier cycle connu
-    const last = sortedCycles[sortedCycles.length - 1];
-    if (!last) return null;
-    const lastStart = new Date(last.dateDebut);
-    const d = new Date(dateStr);
-    const diffFromStart = Math.floor((d - lastStart) / 86400000);
-    if (diffFromStart < 0) return null;
-    const jourDansProjection = ((diffFromStart % avgLen) + avgLen) % avgLen + 1;
-    return getPhaseForDay(jourDansProjection, avgLen, ovStats.mean);
-  };
+    const t = []; let acc = 0;
+    out.forEach(r => { t.push(acc); acc += r.h; });
+    return { rows: out, tops: t };
+  }, [sortedCycles, today]);
 
-  const cells = [];
-  for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const [curMonth, setCurMonth] = useState({ y: +today.slice(0, 4), m: +today.slice(5, 7) - 1 });
+  const listRef = useRef(null);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const idx = rows.findIndex(r => r.type === "month" && r.y === +today.slice(0, 4) && r.m === +today.slice(5, 7) - 1);
+    const base = el.getBoundingClientRect().top + window.scrollY;
+    if (idx >= 0) window.scrollTo(0, base + tops[idx] - HDR + 8);
+  }, [rows]);
 
-  return (
-    <div className="anim">
-      <PageTitle sub="Vue d'ensemble par phase">Calendrier</PageTitle>
+  useEffect(() => {
+    const onScroll = () => {
+      const el = listRef.current;
+      if (!el) return;
+      const y = window.scrollY - (el.getBoundingClientRect().top + window.scrollY) + HDR + 4;
+      let i = 0;
+      while (i < rows.length - 1 && tops[i + 1] <= y) i++;
+      const r = rows[Math.max(0, i)];
+      if (r) setCurMonth(prev => (prev.y === r.y && prev.m === r.m) ? prev : { y: r.y, m: r.m });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [rows, tops]);
 
-      <Card>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <button onClick={() => setMonthOffset(m => m - 1)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted-c)" }}>‹</button>
-          <div style={{ fontFamily: "Cormorant Garamond", fontSize: 20, fontWeight: 600, textTransform: "capitalize" }}>{monthLabel}</div>
-          <button onClick={() => setMonthOffset(m => m + 1)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted-c)" }}>›</button>
+  const monthTitle = capFirst(new Date(curMonth.y, curMonth.m, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" }));
+  const pad = "0 16px";
+
+  const renderWeek = (r) => {
+    const days = r.cells.map(d => {
+      if (!d) return null;
+      const ds = `${r.y}-${String(r.m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      return { d, ds, info: infoFor(ds), e: byDate[ds] };
+    });
+    // Bandeaux de phase : séries consécutives de même phase
+    const bands = [];
+    days.forEach((x, i) => {
+      if (!x || !x.info) return;
+      const last = bands[bands.length - 1];
+      if (last && last.phase === x.info.phase && last.end === i - 1) { last.end = i; if (x.info.jour === x.info.ovDay) last.ovAt = i; }
+      else bands.push({ phase: x.info.phase, start: i, end: i, ovAt: x.info.jour === x.info.ovDay ? i : null });
+    });
+    return (
+      <div key={r.key} style={{ height: r.h, borderBottom: "1px solid var(--border-c)", padding: pad, boxSizing: "border-box" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", paddingTop: 14 }}>
+          {days.map((x, i) => {
+            if (!x) return <div key={i} />;
+            const isToday = x.ds === today, future = x.ds > today, period = flowOn(x.e) && !isToday;
+            return (
+              <button key={i} onClick={() => !future && onPickDate(x.ds)} style={{
+                background: "none", border: "none", padding: 0, textAlign: "center", color: "inherit", cursor: future ? "default" : "pointer",
+              }}>
+                <div style={{
+                  width: 38, height: 38, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: isToday ? 12 : "50%", fontSize: 19, fontWeight: isToday || period ? 700 : 500,
+                  background: isToday ? "var(--text-c)" : period ? C.cta : "transparent",
+                  color: isToday ? "var(--bg)" : period ? C.white : future ? "var(--muted-c)" : "var(--text-c)",
+                  opacity: future ? 0.55 : 1, boxShadow: period ? `0 0 16px ${C.cta}66` : "none",
+                }}>{x.d}</div>
+                <div style={{ height: 5, width: 5, borderRadius: "50%", margin: "6px auto 0", background: hasAnyData(x.e) ? C.primaryDeep : "transparent" }} />
+              </button>
+            );
+          })}
         </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
-          {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => (
-            <div key={i} style={{ textAlign: "center", fontSize: 11, color: "var(--muted-c)", fontWeight: 600 }}>{d}</div>
-          ))}
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
-          {cells.map((d, i) => {
-            if (!d) return <div key={i} />;
-            const dateStr = `${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-            const phase = phaseForDate(dateStr);
-            const isToday = dateStr === todayStr;
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginTop: 12 }}>
+          {bands.map((b, i) => {
+            const isMens = b.phase === "menstruelle";
+            const span = b.end - b.start + 1;
             return (
               <div key={i} style={{
-                aspectRatio: "1", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 12, fontWeight: isToday ? 700 : 500,
-                background: phase ? phase.color + "22" : "var(--surface-2)",
-                color: phase ? phase.color : "var(--muted-c)",
-                border: isToday ? `1.5px solid ${phase ? phase.color : C.primary}` : "1px solid transparent",
+                gridColumn: `${b.start + 1} / span ${span}`, margin: "0 4px", height: 32, borderRadius: 16, position: "relative",
+                background: isMens ? C.cta : "var(--band)", color: isMens ? C.white : "var(--muted-c)",
+                display: "flex", alignItems: "center", padding: "0 12px", fontSize: 14, fontWeight: isMens ? 700 : 500,
+                overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", opacity: days[b.start]?.ds > today && !isMens ? 0.8 : 1,
               }}>
-                {d}
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{capFirst(isMens ? "Règles" : PHASE_LABELS[b.phase])}</span>
+                {b.ovAt != null && (
+                  <span style={{ position: "absolute", top: 7, width: 4, height: 18, borderRadius: 2, background: C.phOvu, left: `calc(${((b.ovAt - b.start) + 0.5) / span * 100}% - 2px)` }} />
+                )}
               </div>
             );
           })}
         </div>
+      </div>
+    );
+  };
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 18, fontSize: 11, color: "var(--muted-c)" }}>
-          {Object.entries(PHASE_LABELS).map(([key, label]) => (
-            <span key={key} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: PHASE_COLORS[key] }} />
-              <span style={{ textTransform: "capitalize" }}>{label}</span>
-            </span>
+  return (
+    <div style={{ maxWidth: 480, margin: "0 auto" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 20, background: "var(--bg)", height: HDR, padding: "0 16px" }}>
+        <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", height: 64, paddingTop: 10 }}>
+          <button onClick={onBack} aria-label="Retour" style={{ ...roundBtn, position: "absolute", left: 0, top: 14, width: 40, height: 40 }}><Ico name="chevL" size={20} color="var(--text-c)" sw={2.4} /></button>
+          <div style={{ fontSize: 24, fontWeight: 700 }}>Calendrier</div>
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 600, height: 44, display: "flex", alignItems: "flex-end", paddingBottom: 6 }}>{monthTitle}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", height: 32, alignItems: "center" }}>
+          {["L", "M", "M", "J", "V", "S", "D"].map((d, i) => (
+            <div key={i} style={{ textAlign: "center", fontSize: 15, fontWeight: 600, color: "var(--muted-c)" }}>{d}</div>
           ))}
         </div>
-      </Card>
+      </div>
 
-      <div style={{ fontSize: 12, color: "var(--muted-c)", marginTop: 14, textAlign: "center" }}>
-        Les jours au-delà de l'historique réel sont des projections basées sur ta moyenne de cycle.
+      <div ref={listRef}>
+        {rows.map(r => r.type === "month" ? (
+          <div key={r.key} style={{ height: r.h, padding: pad, boxSizing: "border-box", display: "grid", gridTemplateColumns: "repeat(7, 1fr)", alignItems: "end" }}>
+            <div style={{ gridColumn: `${r.col + 1} / -1`, borderBottom: "1px solid var(--border-c)", height: "100%", display: "flex", alignItems: "center", paddingBottom: 2 }}>
+              <span style={{ fontSize: 22, fontWeight: 600, color: C.primaryDeep }}>{r.label}</span>
+            </div>
+          </div>
+        ) : renderWeek(r))}
+        <div style={{ height: 60 }} />
       </div>
     </div>
   );
@@ -2573,7 +3270,7 @@ function Assistant({ entries, cycles, currentCycleNum }) {
             Choisis une date
           </div>
           <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
-            min={new Date().toISOString().slice(0, 10)} />
+            min={todayStr()} />
         </Card>
       )}
 
@@ -2616,14 +3313,23 @@ function Assistant({ entries, cycles, currentCycleNum }) {
 }
 
 // ─── PARAMÈTRES ──────────────────────────────────────────────────────────────
-function Parametres({ settings, onUpdate, onNewCycle, currentCycleNum }) {
+function Parametres({ settings, onUpdate, onNewCycle, currentCycleNum, entries }) {
   const upd = (k, v) => onUpdate({ ...settings, [k]: v });
+  const gami = useMemo(() => computeGamification(entries || []), [entries]);
 
   return (
     <div className="anim">
       <PageTitle sub="Personnalisation et configuration">Paramètres</PageTitle>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 560 }}>
+        <Card>
+          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 15 }}>Niveau {gami.niveauNum} · {gami.nom}</div>
+          <div style={{ fontSize: 12, color: "var(--muted-c)", marginBottom: 10 }}>{gami.xp}/{gami.xpMax} XP · {gami.joursRenseignes} jours renseignés</div>
+          <div style={{ height: 6, borderRadius: 99, background: "var(--surface-2)", overflow: "hidden" }}>
+            <div style={{ width: `${gami.progres}%`, height: "100%", background: C.primary, borderRadius: 99 }} />
+          </div>
+        </Card>
+
         <Card>
           <div style={{ fontWeight: 600, marginBottom: 16, fontSize: 15 }}>Profil</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -2761,57 +3467,52 @@ function NavIcon({ name, size = 22, color = "currentColor" }) {
   }
 }
 
-const BOTTOM_NAV_H = 62;
+const BOTTOM_NAV_H = 96;
 
 function BottomNav({ view, onNavigate, onMore, hasUnsaved }) {
   const items = [
-    { id: "historique", icon: "history",  label: "Historique" },
-    { id: "cycle",       icon: "cycle",    label: "Cycle" },
-    { id: "accueil",     icon: "home",     label: "Accueil", center: true },
-    { id: "calendrier",  icon: "calendar", label: "Calendrier" },
-    { id: "more",        icon: "more",     label: "Plus" },
+    { id: "cycle",      icon: "cycle",   label: "Cycle" },
+    { id: "historique", icon: "history", label: "Historique" },
+    { id: "accueil",    center: true },
+    { id: "analyse",    icon: "chart",   label: "Analyse" },
+    { id: "more",       icon: "more",    label: "Plus" },
   ];
   return (
     <div style={{
-      position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 300,
-      height: `calc(${BOTTOM_NAV_H}px + env(safe-area-inset-bottom, 0px))`,
-      paddingBottom: "env(safe-area-inset-bottom, 0px)",
-      background: "var(--surface)", borderTop: "1px solid var(--border-c)",
-      display: "flex", alignItems: "center", justifyContent: "space-around",
-      boxShadow: "0 -4px 20px rgba(0,0,0,.06)",
+      position: "fixed", left: 14, right: 14, bottom: "calc(14px + env(safe-area-inset-bottom, 0px))", zIndex: 300,
+      maxWidth: 452, margin: "0 auto", height: 68, borderRadius: 34,
+      background: "var(--surface)", border: "1px solid var(--border-c)",
+      display: "grid", gridTemplateColumns: "1fr 1fr 1.25fr 1fr 1fr", alignItems: "center", padding: "0 6px",
+      boxShadow: "0 10px 30px rgba(0,0,0,.35)",
     }}>
       {items.map(it => {
         if (it.center) {
           const active = view === it.id;
           return (
-            <button key={it.id} onClick={() => onNavigate(it.id)} style={{
-              width: 54, height: 54, borderRadius: "50%", border: "none", cursor: "pointer",
-              marginTop: -24, flexShrink: 0, padding: 3,
-              background: `conic-gradient(from 200deg, ${C.rose}, ${C.primary}, ${C.sage}, ${C.lavender}, ${C.rose})`,
-              boxShadow: active ? `0 3px 12px ${C.primary}35` : "0 2px 8px rgba(0,0,0,.14)",
-              transform: active ? "scale(1.04)" : "scale(1)",
-              transition: "all .2s",
+            <button key={it.id} onClick={() => onNavigate(it.id)} aria-label="Accueil" style={{
+              justifySelf: "center", width: 60, height: 54, borderRadius: 20, cursor: "pointer",
+              background: "var(--surface-2)", border: `1px solid ${active ? C.cta + "88" : "var(--chip-b)"}`,
+              display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
             }}>
               <span style={{
-                width: "100%", height: "100%", borderRadius: "50%", background: "var(--surface)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <NavIcon name="home" size={18} color={active ? C.primaryDeep : "var(--muted-c)"} />
-              </span>
+                width: 36, height: 36, borderRadius: "50%",
+                background: `radial-gradient(circle at 34% 30%, ${C.white}cc 0%, ${C.primaryLight} 24%, ${C.phOvu} 56%, ${C.phLut} 100%)`,
+                boxShadow: `0 0 14px ${C.primaryLight}44`,
+              }} />
             </button>
           );
         }
         const active = it.id !== "more" && view === it.id;
+        const col = active ? C.primaryLight : "var(--muted-c)";
         return (
           <button key={it.id} onClick={() => it.id === "more" ? onMore() : onNavigate(it.id)} style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-            background: "none", border: "none", cursor: "pointer", padding: "4px 8px",
-            color: active ? C.primary : "var(--muted-c)", position: "relative", minWidth: 44,
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 4, background: "none", border: "none",
+            cursor: "pointer", padding: "4px 0", color: col, position: "relative",
           }}>
-            <NavIcon name={it.icon} size={21} color={active ? C.primary : "var(--muted-c)"} />
-            <span style={{ fontSize: 10, fontWeight: active ? 600 : 500 }}>{it.label}</span>
+            <Ico name={it.icon} size={24} color={col} sw={1.6} />
+            <span style={{ fontSize: 12, fontWeight: 600 }}>{it.label}</span>
             {it.id === "more" && hasUnsaved && (
-              <span style={{ position: "absolute", top: 0, right: 6, width: 6, height: 6, borderRadius: "50%", background: C.primary }} />
+              <span style={{ position: "absolute", top: 2, right: "28%", width: 6, height: 6, borderRadius: "50%", background: C.cta }} />
             )}
           </button>
         );
@@ -2822,9 +3523,9 @@ function BottomNav({ view, onNavigate, onMore, hasUnsaved }) {
 
 function PlusSheet({ open, onClose, onNavigate, onOpenData, hasUnsaved }) {
   const items = [
-    { id: "analyse",   icon: "chart",   label: "Analyse" },
-    { id: "assistant", icon: "sparkle", label: "Assistant" },
-    { id: "params",    icon: "gear",    label: "Paramètres" },
+    { id: "calendrier", icon: "calendarDots", label: "Calendrier" },
+    { id: "assistant",  icon: "sparkle",      label: "Assistant" },
+    { id: "params",     icon: "gear",         label: "Paramètres" },
   ];
   return (
     <Modal open={open} onClose={onClose} title="Plus">
@@ -2835,7 +3536,7 @@ function PlusSheet({ open, onClose, onNavigate, onOpenData, hasUnsaved }) {
             borderRadius: 14, border: "none", background: "var(--surface-2)", cursor: "pointer",
             fontFamily: "inherit", fontSize: 15, color: "var(--text-c)", textAlign: "left",
           }}>
-            <NavIcon name={it.icon} size={20} color={C.primary} />
+            <Ico name={it.icon} size={20} color={C.primaryLight} />
             {it.label}
           </button>
         ))}
@@ -2844,9 +3545,9 @@ function PlusSheet({ open, onClose, onNavigate, onOpenData, hasUnsaved }) {
           borderRadius: 14, border: "none", background: "var(--surface-2)", cursor: "pointer",
           fontFamily: "inherit", fontSize: 15, color: "var(--text-c)", textAlign: "left", position: "relative",
         }}>
-          <NavIcon name="save" size={20} color={C.primary} />
+          <Ico name="save" size={20} color={C.primaryLight} />
           Données
-          {hasUnsaved && <span style={{ position: "absolute", top: 16, right: 16, width: 7, height: 7, borderRadius: "50%", background: C.primary }} />}
+          {hasUnsaved && <span style={{ position: "absolute", top: 16, right: 16, width: 7, height: 7, borderRadius: "50%", background: C.cta }} />}
         </button>
       </div>
     </Modal>
@@ -2879,6 +3580,7 @@ export default function App() {
   const [plusOpen, setPlusOpen] = useState(false);
   const [dataModalOpen, setDataModalOpen] = useState(false);
   const [hasUnsaved, setHasUnsaved] = useState(false);
+  const [focusDate, setFocusDate] = useState(null);
 
   // Init state depuis localStorage si dispo, sinon vide
   const stored = useMemo(() => loadFromStorage(), []);
@@ -2973,7 +3675,7 @@ export default function App() {
 
   const handleNewCycle = useCallback(() => {
     const newNum = currentCycleNum + 1;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayStr();
 
     // Snapshot des données actuelles AVANT mutation — pour la sauvegarde
     const prevCycleEntries = entries.filter(e => e.cycleNum === currentCycleNum && e.date < today);
@@ -3036,7 +3738,11 @@ export default function App() {
     setShowOnboarding(false);
   }, []);
 
-  const navigate = (id) => { setView(id); setPlusOpen(false); };
+  const navigate = (id) => { setView(id); setPlusOpen(false); window.scrollTo(0, 0); };
+  const pickDate = (ds) => { setFocusDate(ds); navigate("accueil"); };
+  const updateSettings = useCallback((patch) => setSettings(s => ({ ...s, ...patch })), []);
+  const fullBleed = view === "calendrier";
+  const hideNav = view === "calendrier" || view === "courbe";
 
   const Sidebar = () => (
     <div style={{
@@ -3151,19 +3857,20 @@ export default function App() {
         {!isMobile && <Sidebar />}
         <main style={{
           flex: 1,
-          padding: isMobile ? `18px 16px calc(${BOTTOM_NAV_H}px + env(safe-area-inset-bottom, 0px) + 28px)` : "44px 52px",
-          maxWidth: isMobile ? undefined : 1100,
+          padding: fullBleed ? 0 : isMobile ? `18px 16px calc(${hideNav ? 0 : BOTTOM_NAV_H}px + env(safe-area-inset-bottom, 0px) + 28px)` : "44px 52px",
+          maxWidth: isMobile ? undefined : 1100, minWidth: 0,
         }}>
-          {view === "accueil"    && <Accueil entries={entries} cycles={cycles} settings={settings} onSaveSymptomes={handleAdd} onSaveSymptothermie={handleAdd} onSavePertes={handleAdd} />}
+          {view === "accueil"    && <Accueil entries={entries} cycles={cycles} settings={settings} onSave={handleAdd} onUpdateSettings={updateSettings} onNavigate={navigate} focusDate={focusDate} onFocusConsumed={() => setFocusDate(null)} />}
+          {view === "courbe"     && <Courbe entries={entries} cycles={cycles} onBack={() => navigate("accueil")} onNavigate={navigate} />}
           {view === "cycle"      && <CycleActuel entries={entries} cycles={cycles} onAdd={handleAdd} onEdit={handleEdit} onDelete={handleDelete} currentCycleNum={currentCycleNum} isMobile={isMobile} />}
-          {view === "calendrier" && <Calendrier entries={entries} cycles={cycles} />}
+          {view === "calendrier" && <Calendrier entries={entries} cycles={cycles} onBack={() => navigate("accueil")} onPickDate={pickDate} />}
           {view === "historique" && <Historique entries={entries} cycles={cycles} isMobile={isMobile} onDeleteCycle={handleDeleteCycle} />}
           {view === "analyse"    && <Analyse entries={entries} cycles={cycles} />}
           {view === "assistant"  && <Assistant entries={entries} cycles={cycles} currentCycleNum={currentCycleNum} />}
-          {view === "params"     && <Parametres settings={settings} onUpdate={setSettings} onNewCycle={handleNewCycle} currentCycleNum={currentCycleNum} />}
+          {view === "params"     && <Parametres settings={settings} onUpdate={setSettings} onNewCycle={handleNewCycle} currentCycleNum={currentCycleNum} entries={entries} />}
         </main>
       </div>
-      {isMobile && (
+      {isMobile && !hideNav && (
         <BottomNav view={view} onNavigate={navigate} onMore={() => setPlusOpen(true)} hasUnsaved={hasUnsaved} />
       )}
       <PlusSheet open={plusOpen} onClose={() => setPlusOpen(false)} onNavigate={navigate}

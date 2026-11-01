@@ -4,8 +4,8 @@
   "description": "Suivi de cycle menstruel · Symptothermie",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FDF8F3",
-  "theme_color": "#E8944A",
+  "background_color": "#0F070D",
+  "theme_color": "#0F070D",
   "orientation": "portrait-primary",
   "lang": "fr",
   "icons": [
