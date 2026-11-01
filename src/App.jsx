@@ -421,28 +421,33 @@ const PHASE_LABELS = {
   luteale:      "lutéale",
 };
 
+// Méthode calendaire : la phase lutéale dure ~14 jours, donc ovulation ≈ durée moyenne du cycle − 14
+const LUTEALE_JOURS = 14;
+
+// Phase ovulatoire = 3 jours (veille, jour, lendemain de l'ovulation estimée)
+function ovWindow(avgLen, ovMean, dureeRegles) {
+  const ov = Math.min(avgLen - 2, Math.max(dureeRegles + 2, Math.round(ovMean)));
+  return { ov, start: Math.max(dureeRegles + 1, ov - 1), end: Math.min(avgLen - 1, ov + 1) };
+}
+
 function getPhaseForDay(jour, avgLen, ovMean, dureeReglesMoy = 5) {
-  const ov = Math.round(ovMean);
-  const fertileStart = ov - 5;
-  const fertileEnd = ov + 1;
+  const w = ovWindow(avgLen, ovMean, dureeReglesMoy);
   let phase;
   if (jour <= dureeReglesMoy) phase = "menstruelle";
-  else if (jour < fertileStart) phase = "folliculaire";
-  else if (jour <= fertileEnd) phase = "ovulatoire";
+  else if (jour < w.start) phase = "folliculaire";
+  else if (jour <= w.end) phase = "ovulatoire";
   else phase = "luteale";
   return { phase, color: PHASE_COLORS[phase], label: PHASE_LABELS[phase] };
 }
 
-// Bornes des 4 segments (en % du cycle) pour dessiner la roue
+// Bornes des 4 segments pour dessiner la roue
 function phaseSegments(avgLen, ovMean, dureeReglesMoy = 5) {
-  const ov = Math.round(ovMean);
-  const fertileStart = Math.max(dureeReglesMoy + 1, ov - 5);
-  const fertileEnd = Math.min(avgLen, ov + 1);
+  const w = ovWindow(avgLen, ovMean, dureeReglesMoy);
   return [
     { phase: "menstruelle",  start: 1, end: dureeReglesMoy },
-    { phase: "folliculaire", start: dureeReglesMoy + 1, end: fertileStart - 1 },
-    { phase: "ovulatoire",   start: fertileStart, end: fertileEnd },
-    { phase: "luteale",      start: fertileEnd + 1, end: avgLen },
+    { phase: "folliculaire", start: dureeReglesMoy + 1, end: w.start - 1 },
+    { phase: "ovulatoire",   start: w.start, end: w.end },
+    { phase: "luteale",      start: w.end + 1, end: avgLen },
   ].filter(s => s.end >= s.start);
 }
 
@@ -599,35 +604,58 @@ function computeStreak(entries) {
 }
 
 // ─── STATS DE CYCLE (partagées Accueil / Courbe / Calendrier) ────────────────
+function computeAvgLen(cycles) {
+  const starts = cycles.filter(c => c.dateDebut).map(c => c.dateDebut).sort();
+  const lens = starts.slice(1).map((d, i) => diffDays(d, starts[i])).filter(n => n >= 18 && n <= 60).slice(-12);
+  return lens.length ? Math.min(45, Math.max(21, Math.round(lens.reduce((a, b) => a + b, 0) / lens.length))) : 28;
+}
+
+// Durée réelle des règles d'un cycle : jours consécutifs de flux depuis J1 (le spotting n'en fait pas partie)
+function periodRun(ents, start) {
+  const byDate = {}; ents.forEach(e => { byDate[e.date] = e; });
+  let n = 0;
+  while (flowOn(byDate[addDays(start, n)])) n += 1;
+  return n;
+}
+
 function useCycleStats(entries, cycles) {
   return useMemo(() => {
     const currentCycleNum = Math.max(1, ...entries.map(e => e.cycleNum || 1));
     const currentEntries = entries.filter(e => e.cycleNum === currentCycleNum).sort((a, b) => a.date.localeCompare(b.date));
     const cycleStart = currentEntries[0]?.date || todayStr();
     // Durée d'un cycle = écart entre deux débuts de cycle (robuste si les derniers jours ne sont pas saisis)
-    const starts = cycles.filter(c => c.dateDebut).map(c => c.dateDebut).sort();
-    const lens = starts.slice(1).map((d, i) => diffDays(d, starts[i])).filter(n => n >= 18 && n <= 60).slice(-12);
-    const avgLen = lens.length ? Math.min(45, Math.max(21, Math.round(lens.reduce((a, b) => a + b, 0) / lens.length))) : 28;
+    const avgLen = computeAvgLen(cycles);
 
     const groups = {};
     entries.forEach(e => { (groups[e.cycleNum] = groups[e.cycleNum] || []).push(e); });
     const past = Object.entries(groups).filter(([n]) => parseInt(n) < currentCycleNum);
     const ovStats = computeOvulationStats(past.map(([, ents]) => ({ entries: ents })));
-    const ovMean = ovStats.mean || 14;
+    const ovHist = avgLen - LUTEALE_JOURS; // estimation calendaire (sans symptothermie)
 
     // Durée moyenne des règles : jours consécutifs avec flux depuis le J1 de chaque cycle passé
     const durs = [];
     past.forEach(([, ents]) => {
       const sorted = ents.slice().sort((a, b) => a.date.localeCompare(b.date));
-      const byDate = {}; sorted.forEach(e => { byDate[e.date] = e; });
-      let n = 0;
-      while (flowOn(byDate[addDays(sorted[0].date, n)])) n += 1;
+      const n = periodRun(sorted, sorted[0].date);
       if (n >= 2 && n <= 10) durs.push(n);
     });
-    const dureeRegles = durs.length ? Math.min(8, Math.max(2, Math.round(durs.reduce((a, b) => a + b, 0) / durs.length))) : 5;
+    const dureeHist = durs.length ? Math.min(8, Math.max(2, Math.round(durs.reduce((a, b) => a + b, 0) / durs.length))) : 5;
+
+    // Cycle en cours : les règles s'arrêtent dès qu'un jour sans flux est renseigné (ex. spotting)
+    const run = periodRun(currentEntries, cycleStart);
+    const nextDay = addDays(cycleStart, run);
+    const closed = run >= 1 && currentEntries.some(e => e.date >= nextDay && hasAnyData(e));
+    const dureeRegles = run < 1 ? dureeHist : closed ? Math.min(10, run) : Math.min(10, Math.max(run, dureeHist));
+
+    // Ovulation estimée du cycle en cours : symptothermie (détectée) > test positif > dernier jour de glaire blanc d'œuf > méthode calendaire
+    const an = analyserCycle(currentEntries);
+    const posTests = currentEntries.filter(e => e.testOvulation === "positif").map(e => e.jourDuCycle).filter(Boolean);
+    const peaks = currentEntries.filter(e => glaireQualiteOf(e) === "blanc_oeuf").map(e => e.jourDuCycle).filter(Boolean);
+    const ovRaw = an.jourOvulation || (posTests.length ? Math.min(...posTests) + 1 : null) || (peaks.length ? Math.max(...peaks) : null) || ovHist;
+    const ovMean = Math.min(avgLen - 2, Math.max(dureeRegles + 2, ovRaw));
 
     const todayCycleDay = Math.max(1, diffDays(todayStr(), cycleStart) + 1);
-    return { currentCycleNum, currentEntries, cycleStart, avgLen, ovMean, ovStats, dureeRegles, todayCycleDay };
+    return { currentCycleNum, currentEntries, cycleStart, avgLen, ovMean, ovHist, ovStats, dureeRegles, todayCycleDay };
   }, [entries, cycles]);
 }
 
@@ -1542,6 +1570,8 @@ function PhaseWheel({ avgLen, ovMean, dureeRegles, curseurJour, onChange, size =
   const [dragging, setDragging] = useState(false);
   const cx = size / 2, cy = size / 2, r = size / 2 - 14;
   const segments = phaseSegments(avgLen, ovMean, dureeRegles);
+  const ow = ovWindow(avgLen, ovMean, dureeRegles);
+  const fertStart = Math.max(dureeRegles + 1, ow.ov - 5), fertEnd = Math.min(avgLen, ow.ov + 1);
 
   const dayToAngle = (day) => (Math.min(day, avgLen) / avgLen) * 360;
   const angleToDay = (angle) => Math.min(avgLen, Math.max(1, Math.round((angle / 360) * avgLen)));
@@ -1603,6 +1633,11 @@ function PhaseWheel({ avgLen, ovMean, dureeRegles, curseurJour, onChange, size =
             style={{ transition: "stroke .4s ease, stroke-width .4s ease" }} />
         );
       })}
+
+      {fertEnd >= fertStart && (
+        <path d={describeArc(cx, cy, r + 9, ((fertStart - 1) / avgLen) * 360 + RING_GAP / 2, (fertEnd / avgLen) * 360 - RING_GAP / 2)}
+          fill="none" strokeLinecap="round" stroke={C.phOvu} strokeWidth={2} strokeOpacity={0.5} strokeDasharray="1 5" style={{ pointerEvents: "none" }} />
+      )}
 
       {mens && active !== "menstruelle" && (
         <g style={{ pointerEvents: "none" }}>
@@ -2187,7 +2222,7 @@ function CycleActuel({ entries, cycles, settings, onAdd, onDelete, onUpdateSetti
   return (
     <div className="anim">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>
-        <PageTitle sub={`${cycleEntries.length} jours enregistrés`}>
+        <PageTitle sub={`${cycleEntries.filter(hasAnyData).length} jours renseignés · ${cycleEntries.length} jours au total`}>
           Cycle {currentCycleNum} — En cours
         </PageTitle>
         <Btn onClick={() => setDay(today)}>＋ Nouvelle entrée</Btn>
@@ -2236,7 +2271,7 @@ function CycleActuel({ entries, cycles, settings, onAdd, onDelete, onUpdateSetti
             {isMobile ? (
               <div>
                 {cycleEntries.map(e => (
-                  <div key={e.id} onClick={() => setDay(e.date)} style={{ padding: "14px 16px", borderBottom: "1px solid var(--border-c)", cursor: "pointer" }}>
+                  <div key={e.id} onClick={() => e.date <= today && setDay(e.date)} style={{ padding: "14px 16px", borderBottom: "1px solid var(--border-c)", cursor: e.date <= today ? "pointer" : "default", opacity: e.date > today ? 0.5 : 1 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{ fontFamily: "Cormorant Garamond", fontSize: 22, fontWeight: 600, color: C.primary, minWidth: 32 }}>J{e.jourDuCycle}</span>
@@ -2277,7 +2312,7 @@ function CycleActuel({ entries, cycles, settings, onAdd, onDelete, onUpdateSetti
                       const flux = e.flux || ({ faible: "leger", normal: "modere", abondant: "abondant" })[e.saignement];
                       const spot = e.spotting || (e.saignement === "spotting" ? "oui" : null);
                       return (
-                        <tr key={e.id} onClick={() => setDay(e.date)}>
+                        <tr key={e.id} onClick={() => e.date <= today && setDay(e.date)} style={{ opacity: e.date > today ? 0.5 : 1, cursor: e.date <= today ? "pointer" : "default" }}>
                           <td style={{ fontWeight: 600, color: C.primary, fontFamily: "Cormorant Garamond", fontSize: 16 }}>{e.jourDuCycle || "—"}</td>
                           <td style={{ whiteSpace: "nowrap", fontSize: 13 }}>{fmtShort(e.date)}</td>
                           <td style={{ fontWeight: e.temperature ? 600 : 400, fontFamily: e.temperature ? "Cormorant Garamond" : "inherit", fontSize: e.temperature ? 16 : 14 }}>
@@ -2699,7 +2734,7 @@ function Historique({ entries, cycles, isMobile, onDeleteCycle }) {
 
 // ─── CALENDRIER MENSUEL ──────────────────────────────────────────────────────
 function Calendrier({ entries, cycles, onBack, onPickDate }) {
-  const { avgLen, ovMean, dureeRegles } = useCycleStats(entries, cycles);
+  const { avgLen, ovMean, ovHist, dureeRegles } = useCycleStats(entries, cycles);
   const today = todayStr();
   const HDR = 142, ROW_H = 120, MONTH_H = 56;
 
@@ -2712,6 +2747,17 @@ function Calendrier({ entries, cycles, onBack, onPickDate }) {
     return m;
   }, [entries]);
 
+  const runByCycle = useMemo(() => {
+    const m = {};
+    sortedCycles.forEach(c => { m[c.cycleNum] = periodRun(entries.filter(e => e.cycleNum === c.cycleNum), c.dateDebut); });
+    return m;
+  }, [entries, sortedCycles]);
+  const byCycleMax = useMemo(() => {
+    const m = {};
+    sortedCycles.forEach((c, i) => { const nx = sortedCycles[i + 1]; if (nx) m[c.cycleNum] = diffDays(nx.dateDebut, c.dateDebut); });
+    return m;
+  }, [sortedCycles]);
+
   // Phase d'une date : cycle réel (passé) ou projection à partir du dernier cycle
   const infoFor = useCallback((dateStr) => {
     let cyc = null;
@@ -2719,11 +2765,18 @@ function Calendrier({ entries, cycles, onBack, onPickDate }) {
     if (!cyc) return null;
     const isLast = cyc === sortedCycles[sortedCycles.length - 1];
     const abs = diffDays(dateStr, cyc.dateDebut) + 1;
-    let jour = abs, ovDay = ovByCycle[cyc.cycleNum] || Math.round(ovMean);
-    if (isLast && abs > avgLen + 7) { jour = ((abs - 1) % avgLen) + 1; ovDay = Math.round(ovMean); }
-    const phase = getPhaseForDay(jour, avgLen, ovDay, dureeRegles).phase;
+    let jour = abs, ovDay, dur;
+    if (isLast) { ovDay = Math.round(ovMean); dur = dureeRegles; }
+    else {
+      ovDay = ovByCycle[cyc.cycleNum] || ((byCycleMax[cyc.cycleNum] || avgLen) - LUTEALE_JOURS);
+      const run = runByCycle[cyc.cycleNum];
+      dur = run >= 1 ? Math.min(10, run) : dureeRegles;
+    }
+    const len = isLast ? avgLen : (byCycleMax[cyc.cycleNum] || avgLen);
+    if (isLast && abs > avgLen + 7) { jour = ((abs - 1) % avgLen) + 1; ovDay = Math.round(ovHist); }
+    const phase = getPhaseForDay(jour, len, ovDay, dur).phase;
     return { phase, jour, ovDay };
-  }, [sortedCycles, ovByCycle, ovMean, avgLen, dureeRegles]);
+  }, [sortedCycles, ovByCycle, runByCycle, byCycleMax, ovMean, ovHist, avgLen, dureeRegles]);
 
   // Construction des lignes : un bandeau de mois puis les semaines (jours du mois uniquement)
   const { rows, tops } = useMemo(() => {
@@ -2957,10 +3010,9 @@ function Analyse({ entries, cycles }) {
 
 function predictCycles(entries, cycles, nbFuturs = 6) {
   // Longueur moyenne des cycles complets
-  const lengths = cycles
-    .filter(c => c.dateFin && c.dateDebut)
-    .map(c => Math.floor((new Date(c.dateFin) - new Date(c.dateDebut)) / 86400000) + 1);
-  const avgLen = lengths.length ? Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length) : 28;
+  const starts = cycles.filter(c => c.dateDebut).map(c => c.dateDebut).sort();
+  const lengths = starts.slice(1).map((d, i) => diffDays(d, starts[i])).filter(n => n >= 18 && n <= 60);
+  const avgLen = computeAvgLen(cycles);
   const stdLen = lengths.length > 1
     ? Math.round(Math.sqrt(lengths.map(l => (l - avgLen) ** 2).reduce((a, b) => a + b, 0) / lengths.length))
     : 3;
@@ -2982,7 +3034,7 @@ function predictCycles(entries, cycles, nbFuturs = 6) {
   for (let i = 0; i < nbFuturs; i++) {
     const cycleStart = new Date(lastStart.getTime() + i * avgLen * 86400000);
     const cycleEnd = new Date(cycleStart.getTime() + (avgLen - 1) * 86400000);
-    const ovDay = new Date(cycleStart.getTime() + (Math.round(ovStats.mean) - 1) * 86400000);
+    const ovDay = new Date(cycleStart.getTime() + (avgLen - LUTEALE_JOURS - 1) * 86400000);
     const fertileStart = new Date(ovDay.getTime() - 5 * 86400000);
     const fertileEnd = new Date(ovDay.getTime() + 1 * 86400000);
     // Durée règles typique 4-6 jours
@@ -2999,7 +3051,7 @@ function predictCycles(entries, cycles, nbFuturs = 6) {
     });
   }
 
-  return { predictions, avgLen, stdLen, ovMean: Math.round(ovStats.mean), ovStd: Math.round(ovStats.std) };
+  return { predictions, avgLen, stdLen, ovMean: avgLen - LUTEALE_JOURS, ovStd: stdLen };
 }
 
 const fmtLong = (d) => d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -3033,7 +3085,7 @@ function repondreOvulation(prediction) {
       valeur: fmtLong(p.ovulation),
       sub: `Fenêtre fertile : ${fmtMedium(p.fertileDebut)} → ${fmtMedium(p.fertileFin)}`,
     })),
-    footer: `Ovulation historique : J${prediction.ovMean} (±${prediction.ovStd}j)`,
+    footer: `Méthode calendaire : cycle moyen ${prediction.avgLen}j − 14j de phase lutéale = ovulation vers J${prediction.ovMean}`,
   };
 }
 
@@ -3570,10 +3622,19 @@ export default function App() {
       if (r.cycleInfo) infos[k] = r.cycleInfo;
     });
     const nextCycles = cyclesIn.some(c => c.cycleNum === n) ? cyclesIn : [...cyclesIn, { cycleNum: n }];
-    return {
-      entries: ents,
-      cycles: nextCycles.map(c => infos[c.cycleNum] ? { ...c, ...infos[c.cycleNum] } : c),
-    };
+    const merge = () => nextCycles.map(c => infos[c.cycleNum] ? { ...c, ...infos[c.cycleNum] } : c);
+    // Création des jours du cycle (durée moyenne des cycles précédents), vides à remplir
+    const avg = computeAvgLen(merge());
+    const have = new Set(ents.filter(e => e.cycleNum === n).map(e => e.date));
+    for (let i = 0; i < avg; i++) {
+      const d = addDays(startDate, i);
+      if (have.has(d)) continue;
+      ents.push({ id: `b_${d}_${n}`, date: d, cycleNum: n, temperature: null, saignement: null,
+        glaireSensation: null, glaireApparence: null, colFermete: null, colOuverture: null, rapport: null, perturbation: null, heure: null });
+    }
+    const r = recomputeCycle(ents, n);
+    ents = r.entries; if (r.cycleInfo) infos[n] = r.cycleInfo;
+    return { entries: ents, cycles: merge() };
   }, [recomputeCycle]);
 
   const handleNewCycle = useCallback((startDate) => {
