@@ -168,6 +168,8 @@ const TEST_OVULATION_OPTS = [
 const DEFAULT_SETTINGS = {
   prenom: "",
   darkMode: true,
+  rappelActif: false,
+  rappelHeure: 20,
   longueurCycleMoyenne: 28,
   longueurLutealeMoyenne: 14,
   customComplements: [],
@@ -3258,11 +3260,57 @@ function Assistant({ entries, cycles, currentCycleNum }) {
 }
 
 // ─── PARAMÈTRES ──────────────────────────────────────────────────────────────
+// ─── NOTIFICATIONS PUSH (rappel du soir) ─────────────────────────────────────
+const urlB64ToBytes = (b) => {
+  const raw = atob((b + "=".repeat((4 - (b.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+};
+async function pushApi(body) {
+  const r = await fetch("/api/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || "Erreur serveur");
+  return j;
+}
+const pushSupported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const needsInstall = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
+  && !(navigator.standalone || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches));
+async function pushSubscribe(hour) {
+  if (!pushSupported()) throw new Error("Notifications non prises en charge sur cet appareil.");
+  if ((await Notification.requestPermission()) !== "granted") throw new Error("Autorisation refusée : active les notifications pour Mo dans les réglages du téléphone.");
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    const j = await (await fetch("/api/push?action=key")).json().catch(() => ({}));
+    if (!j.key) throw new Error(j.error || "Serveur de notifications non configuré.");
+    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToBytes(j.key) });
+  }
+  await pushApi({ action: "subscribe", subscription: sub.toJSON(), hour });
+}
+async function pushUnsubscribe() {
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  if (sub) { await pushApi({ action: "unsubscribe", endpoint: sub.endpoint }).catch(() => {}); await sub.unsubscribe(); }
+}
+async function pushTest() {
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  if (!sub) throw new Error("Rappel non activé sur cet appareil.");
+  await pushApi({ action: "test", subscription: sub.toJSON() });
+}
+
 function Parametres({ settings, onUpdate, onNewCycle, currentCycleNum, entries }) {
   const [startDate, setStartDate] = useState(todayStr());
   const curStart = useMemo(() => (entries || []).filter(e => e.cycleNum === currentCycleNum).map(e => e.date).sort()[0], [entries, currentCycleNum]);
   const startOk = !!startDate && startDate <= todayStr() && (!curStart || startDate > curStart);
   const upd = (k, v) => onUpdate({ ...settings, [k]: v });
+  const [pushMsg, setPushMsg] = useState("");
+  const [pushBusy, setPushBusy] = useState(false);
+  const runPush = async (fn, okMsg) => {
+    setPushBusy(true); setPushMsg("");
+    try { await fn(); if (okMsg) setPushMsg(okMsg); } catch (e) { setPushMsg(e.message || "Échec"); }
+    setPushBusy(false);
+  };
+  const hour = 20;
   const gami = useMemo(() => computeGamification(entries || []), [entries]);
 
   return (
@@ -3305,6 +3353,34 @@ function Parametres({ settings, onUpdate, onNewCycle, currentCycleNum, entries }
               }} />
             </button>
           </div>
+        </Card>
+
+        <Card>
+          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 15 }}>Rappel du soir</div>
+          <p style={{ fontSize: 13, color: "var(--muted-c)", marginBottom: 14, lineHeight: 1.6 }}>
+            Une notification sur ce téléphone chaque soir, entre 20 h et 21 h (heure de Paris), pour penser à compléter ta journée.
+          </p>
+          {!pushSupported() || needsInstall() ? (
+            <div style={{ fontSize: 13, color: "var(--muted-c)", lineHeight: 1.6 }}>
+              {needsInstall()
+                ? "Sur iPhone, installe d'abord Mo sur l'écran d'accueil (Safari, Partager, Sur l'écran d'accueil), puis rouvre l'app depuis l'icône."
+                : "Les notifications ne sont pas prises en charge sur ce navigateur."}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {settings.rappelActif ? (
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <Btn variant="soft" disabled={pushBusy} onClick={() => runPush(pushTest, "Notification de test envoyée.")}>Envoyer un test</Btn>
+                  <Btn variant="soft" disabled={pushBusy} onClick={() => runPush(async () => { await pushUnsubscribe(); upd("rappelActif", false); }, "Rappel désactivé.")}>Désactiver</Btn>
+                </div>
+              ) : (
+                <Btn disabled={pushBusy} onClick={() => runPush(async () => { await pushSubscribe(hour); upd("rappelActif", true); }, "Rappel activé : chaque soir entre 20 h et 21 h.")}>
+                  Activer le rappel du soir
+                </Btn>
+              )}
+              {pushMsg && <div style={{ fontSize: 13, color: C.primaryLight }}>{pushMsg}</div>}
+            </div>
+          )}
         </Card>
 
         <Card>

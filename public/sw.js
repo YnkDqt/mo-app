@@ -1,4 +1,4 @@
-const CACHE = "mo-v3";
+const CACHE = "mo-v4";
 const SHELL = ["/", "/index.html", "/logo.png", "/icon-192.png", "/icon-512.png", "/favicon.png", "/manifest.json"];
 
 self.addEventListener("install", e => {
@@ -17,6 +17,7 @@ self.addEventListener("activate", e => {
 
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET" || !e.request.url.startsWith(self.location.origin)) return;
+  if (new URL(e.request.url).pathname.startsWith("/api/")) return;
 
   // Network-first pour les pages HTML : permet de pousser des updates rapidement
   const isHTML = e.request.mode === "navigate" || e.request.headers.get("accept")?.includes("text/html");
@@ -44,4 +45,22 @@ self.addEventListener("fetch", e => {
       return cached || network;
     })
   );
+});
+
+// ─── Notifications push ──────────────────────────────────────────────────────
+self.addEventListener("push", e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) {}
+  e.waitUntil(self.registration.showNotification(d.title || "Mo", {
+    body: d.body || "C'est l'heure de compléter ta journée.",
+    icon: "/icon-192.png", badge: "/icon-192.png", tag: "mo-rappel", data: { url: d.url || "/" },
+  }));
+});
+
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+    for (const c of list) if ("focus" in c) return c.focus();
+    return self.clients.openWindow((e.notification.data && e.notification.data.url) || "/");
+  }));
 });
