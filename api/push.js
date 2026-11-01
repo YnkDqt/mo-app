@@ -30,8 +30,8 @@ function setup() {
 }
 
 const PAYLOAD = JSON.stringify({
-  title: "Mo",
-  body: "C'est l'heure de compléter ta journée : symptômes, température, pertes.",
+  title: "Rappel du soir",
+  body: "Il est l'heure de compléter ta journée",
   url: "/",
 });
 
