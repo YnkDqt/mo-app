@@ -1565,7 +1565,7 @@ function describeArc(cx, cy, r, startAngle, endAngle) {
 const PHASE_DIM = { menstruelle: C.phMensDim, folliculaire: C.phFolDim, ovulatoire: C.phOvuDim, luteale: C.phLutDim };
 const RING_GAP = 11; // degrés laissés entre deux phases
 
-function PhaseWheel({ avgLen, ovMean, dureeRegles, curseurJour, onChange, size = 300 }) {
+function PhaseWheel({ avgLen, ovMean, dureeRegles, curseurJour, todayJour, onChange, size = 300 }) {
   const svgRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const cx = size / 2, cy = size / 2, r = size / 2 - 14;
@@ -1573,8 +1573,22 @@ function PhaseWheel({ avgLen, ovMean, dureeRegles, curseurJour, onChange, size =
   const ow = ovWindow(avgLen, ovMean, dureeRegles);
   const fertStart = Math.max(dureeRegles + 1, ow.ov - 5), fertEnd = Math.min(avgLen, ow.ov + 1);
 
-  const dayToAngle = (day) => (Math.min(day, avgLen) / avgLen) * 360;
-  const angleToDay = (angle) => Math.min(avgLen, Math.max(1, Math.round((angle / 360) * avgLen)));
+  const arcOf = (sg) => [((sg.start - 1) / avgLen) * 360 + RING_GAP / 2, (sg.end / avgLen) * 360 - RING_GAP / 2];
+  // Angle du milieu du jour, toujours à l'intérieur de l'arc de sa phase (jamais dans un intervalle)
+  const dayToAngle = (day) => {
+    const d = Math.min(Math.max(day, 1), avgLen);
+    const sg = segments.find(x => d >= x.start && d <= x.end) || segments[segments.length - 1];
+    const [a0, a1] = arcOf(sg);
+    return a0 + ((d - sg.start + 0.5) / (sg.end - sg.start + 1)) * (a1 - a0);
+  };
+  const angleToDay = (angle) => {
+    let best = 1, bd = 999;
+    for (let d = 1; d <= avgLen; d++) {
+      const diff = Math.abs(((dayToAngle(d) - angle + 540) % 360) - 180);
+      if (diff < bd) { bd = diff; best = d; }
+    }
+    return best;
+  };
 
   const handlePointer = useCallback((clientX, clientY) => {
     const svg = svgRef.current;
@@ -1586,7 +1600,7 @@ function PhaseWheel({ avgLen, ovMean, dureeRegles, curseurJour, onChange, size =
     let angle = Math.atan2(y, x) * 180 / Math.PI + 90;
     if (angle < 0) angle += 360;
     onChange(angleToDay(angle));
-  }, [avgLen, size]);
+  }, [avgLen, size, ovMean, dureeRegles]);
 
   useEffect(() => {
     if (!dragging) return;
@@ -1615,13 +1629,14 @@ function PhaseWheel({ avgLen, ovMean, dureeRegles, curseurJour, onChange, size =
   const hy = cy + r * Math.sin(rad);
   const handleColor = PHASE_COLORS[active];
 
-  // Repère « fin des règles » quand on n'est plus en phase menstruelle
-  const mens = segments.find(s => s.phase === "menstruelle");
-  const mRad = mens ? (dayToAngle(mens.end) - 90) * Math.PI / 180 : 0;
+  // Repère « aujourd'hui » : suit le jour réel du cycle
+  const tj = Math.min(Math.max(todayJour || 1, 1), avgLen);
+  const mRad = (dayToAngle(tj) - 90) * Math.PI / 180;
   const mx = cx + r * Math.cos(mRad), my = cy + r * Math.sin(mRad);
+  const todayPhase = getPhaseForDay(tj, avgLen, ovMean, dureeRegles).phase;
 
   return (
-    <svg ref={svgRef} viewBox={`0 0 ${size} ${size}`} width="100%" height="100%" style={{ display: "block", touchAction: "none", overflow: "visible" }}>
+    <svg ref={svgRef} viewBox={`0 0 ${size} ${size}`} width="100%" height="100%" style={{ display: "block", touchAction: "none", overflow: "visible", userSelect: "none", WebkitUserSelect: "none" }}>
       {segments.map((s, i) => {
         const a0 = ((s.start - 1) / avgLen) * 360 + RING_GAP / 2;
         const a1 = (s.end / avgLen) * 360 - RING_GAP / 2;
@@ -1639,10 +1654,10 @@ function PhaseWheel({ avgLen, ovMean, dureeRegles, curseurJour, onChange, size =
           fill="none" strokeLinecap="round" stroke={C.phOvu} strokeWidth={2} strokeOpacity={0.5} strokeDasharray="1 5" style={{ pointerEvents: "none" }} />
       )}
 
-      {mens && active !== "menstruelle" && (
+      {tj !== curseurJour && (
         <g style={{ pointerEvents: "none" }}>
-          <circle cx={mx} cy={my} r={7} fill="none" stroke={C.phMensDim} strokeWidth={1.6} />
-          <circle cx={mx} cy={my} r={2.4} fill={C.phMens} />
+          <circle cx={mx} cy={my} r={7} style={{ fill: "var(--bg)" }} stroke={PHASE_DIM[todayPhase]} strokeWidth={1.6} />
+          <circle cx={mx} cy={my} r={2.6} fill={PHASE_COLORS[todayPhase]} />
         </g>
       )}
 
@@ -1767,7 +1782,7 @@ function Accueil({ entries, cycles, settings, onSave, onUpdateSettings, onNaviga
       }}>{pillText}</div>
 
       <div style={{ position: "relative", width: "100%", maxWidth: 336, aspectRatio: "1", marginTop: 26, padding: 0 }}>
-        <PhaseWheel avgLen={avgLen} ovMean={ovMean} dureeRegles={dureeRegles} curseurJour={curseurJour} onChange={setCurseurJour} />
+        <PhaseWheel avgLen={avgLen} ovMean={ovMean} dureeRegles={dureeRegles} curseurJour={curseurJour} todayJour={todayCycleDay} onChange={setCurseurJour} />
         <Orb phase={phaseInfo.phase} label={phaseInfo.label} />
       </div>
 
